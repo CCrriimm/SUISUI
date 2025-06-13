@@ -1,10 +1,10 @@
-﻿using Aimmy2.Class;
-using SharpGen.Runtime;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows;
 using System.Windows.Threading;
+using Aimmy2.Class;
+using SharpGen.Runtime;
 using Visuality;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -82,7 +82,7 @@ namespace AILogic
                     factory.EnumAdapters1(adapterIndex, out var adapter).Success;
                     adapterIndex++)
                 {
-                    //Debug.WriteLine($"\nAdapter {adapterIndex}:");
+                    Debug.WriteLine($"\nAdapter {adapterIndex}:");
 
                     for (uint outputIndex = 0;
                         adapter.EnumOutputs(outputIndex, out var output).Success;
@@ -98,12 +98,13 @@ namespace AILogic
                                 outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left,
                                 outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top);
 
+                            Debug.WriteLine($"Output {outputIndex}: DeviceName = '{outputDesc.DeviceName.TrimEnd('\0')}', Bounds = {outputBounds}");
+
                             // Try different matching strategies
                             bool nameMatch = currentDisplay?.DeviceName != null && outputDesc.DeviceName.TrimEnd('\0') == currentDisplay.DeviceName.TrimEnd('\0');
                             bool boundsMatch = currentDisplay?.Bounds != null && outputBounds.Equals(currentDisplay.Bounds);
 
-                            // Try matching by bounds only as a fallback
-                            if (boundsMatch)
+                            if (nameMatch || boundsMatch)
                             {
                                 targetOutput1 = output1;
                                 targetAdapter = adapter;
@@ -115,13 +116,11 @@ namespace AILogic
                     }
 
                     if (foundTarget) break;
-                    adapter.Dispose();
                 }
 
                 // Fallback to specific display index if not found
-                if (!foundTarget) //targetOutput1 == null || targetAdapter == null
+                if (!foundTarget)
                 {
-                    // Try to find by index
                     int targetIndex = currentDisplay?.Index ?? 0;
                     int currentIndex = 0;
 
@@ -135,7 +134,7 @@ namespace AILogic
                         {
                             if (currentIndex == targetIndex)
                             {
-                                //Debug.WriteLine($"Found display at index {targetIndex}");
+                                Debug.WriteLine($"Found display at index {targetIndex}");
                                 targetOutput1 = output.QueryInterface<IDXGIOutput1>();
                                 targetAdapter = adapter;
                                 foundTarget = true;
@@ -175,8 +174,7 @@ namespace AILogic
                     DriverType.Unknown,
                     DeviceCreationFlags.None,
                     featureLevels,
-                    out _dxDevice
-                    );
+                    out _dxDevice);
 
                 if (result.Failure || _dxDevice == null)
                 {
@@ -195,17 +193,14 @@ namespace AILogic
                 _deskDuplication = targetOutput1.DuplicateOutput(_dxDevice);
                 _consecutiveFailures = 0; //reset on success
 
-                targetAdapter.Dispose();
-                targetOutput1.Dispose();
+                Debug.WriteLine("DXGI Duplication initialized successfully.");
             }
             catch (SharpGenException ex) when (ex.ResultCode == Vortice.DXGI.ResultCode.Unsupported || ex.HResult == unchecked((int)0x887A0004))
             {
-                //DirectX Desktop Duplication not supported
                 Debug.WriteLine($"DirectX Desktop Duplication not supported: {ex.Message}");
                 _directXFailedPermanently = true;
                 DisposeDxgiResources();
 
-                // Force switch to GDI+
                 Dictionary.dropdownState["Screen Capture Method"] = "GDI+";
                 _currentCaptureMethod = "GDI+";
 
@@ -279,7 +274,7 @@ namespace AILogic
 
                     if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                         lock (_displayLock) { _displayChangesPending = true; }
-                    
+
                     return GetCachedFrame(detectionBox);
                 }
                 else if (result != Result.Ok)
@@ -368,7 +363,7 @@ namespace AILogic
 
                 if (++_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                     lock (_displayLock) { _displayChangesPending = true; }
-                
+
                 return GetCachedFrame(detectionBox);
             }
             finally
@@ -383,7 +378,7 @@ namespace AILogic
                 catch { }
 
                 desktopResource?.Dispose();
-            
+
             }
         }
 
