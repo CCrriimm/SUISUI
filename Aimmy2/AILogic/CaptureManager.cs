@@ -1,10 +1,10 @@
-﻿using Aimmy2.Class;
-using SharpGen.Runtime;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows;
 using System.Windows.Threading;
+using Aimmy2.Class;
+using SharpGen.Runtime;
 using Visuality;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -64,155 +64,155 @@ namespace AILogic
         #endregion
 
         #region DirectX
-       public void InitializeDxgiDuplication()
-{
-    DisposeDxgiResources();
-    try
-    {
-        var currentDisplay = DisplayManager.CurrentDisplay;
-        if (currentDisplay == null)
-            throw new InvalidOperationException("No current display available. DisplayManager may not be initialized.");
-
-        using var factory = DXGI.CreateDXGIFactory1<IDXGIFactory1>();
-        IDXGIOutput1? targetOutput1 = null;
-        IDXGIAdapter1? targetAdapter = null;
-        bool foundTarget = false;
-
-        for (uint adapterIndex = 0;
-            factory.EnumAdapters1(adapterIndex, out var adapter).Success;
-            adapterIndex++)
+        public void InitializeDxgiDuplication()
         {
-            Debug.WriteLine($"\nAdapter {adapterIndex}:");
-
-            for (uint outputIndex = 0;
-                adapter.EnumOutputs(outputIndex, out var output).Success;
-                outputIndex++)
+            DisposeDxgiResources();
+            try
             {
-                using (output)
+                var currentDisplay = DisplayManager.CurrentDisplay;
+                if (currentDisplay == null)
+                    throw new InvalidOperationException("No current display available. DisplayManager may not be initialized.");
+
+                using var factory = DXGI.CreateDXGIFactory1<IDXGIFactory1>();
+                IDXGIOutput1? targetOutput1 = null;
+                IDXGIAdapter1? targetAdapter = null;
+                bool foundTarget = false;
+
+                for (uint adapterIndex = 0;
+                    factory.EnumAdapters1(adapterIndex, out var adapter).Success;
+                    adapterIndex++)
                 {
-                    var output1 = output.QueryInterface<IDXGIOutput1>();
-                    var outputDesc = output1.Description;
-                    var outputBounds = new Vortice.Mathematics.Rect(
-                        outputDesc.DesktopCoordinates.Left,
-                        outputDesc.DesktopCoordinates.Top,
-                        outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left,
-                        outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top);
+                    Debug.WriteLine($"\nAdapter {adapterIndex}:");
 
-                    Debug.WriteLine($"Output {outputIndex}: DeviceName = '{outputDesc.DeviceName.TrimEnd('\0')}', Bounds = {outputBounds}");
-
-                    // Try different matching strategies
-                    bool nameMatch = currentDisplay?.DeviceName != null && outputDesc.DeviceName.TrimEnd('\0') == currentDisplay.DeviceName.TrimEnd('\0');
-                    bool boundsMatch = currentDisplay?.Bounds != null && outputBounds.Equals(currentDisplay.Bounds);
-
-                    if (nameMatch || boundsMatch)
+                    for (uint outputIndex = 0;
+                        adapter.EnumOutputs(outputIndex, out var output).Success;
+                        outputIndex++)
                     {
-                        targetOutput1 = output1;
-                        targetAdapter = adapter;
-                        foundTarget = true;
-                        break;
+                        using (output)
+                        {
+                            var output1 = output.QueryInterface<IDXGIOutput1>();
+                            var outputDesc = output1.Description;
+                            var outputBounds = new Vortice.Mathematics.Rect(
+                                outputDesc.DesktopCoordinates.Left,
+                                outputDesc.DesktopCoordinates.Top,
+                                outputDesc.DesktopCoordinates.Right - outputDesc.DesktopCoordinates.Left,
+                                outputDesc.DesktopCoordinates.Bottom - outputDesc.DesktopCoordinates.Top);
+
+                            Debug.WriteLine($"Output {outputIndex}: DeviceName = '{outputDesc.DeviceName.TrimEnd('\0')}', Bounds = {outputBounds}");
+
+                            // Try different matching strategies
+                            bool nameMatch = currentDisplay?.DeviceName != null && outputDesc.DeviceName.TrimEnd('\0') == currentDisplay.DeviceName.TrimEnd('\0');
+                            bool boundsMatch = currentDisplay?.Bounds != null && outputBounds.Equals(currentDisplay.Bounds);
+
+                            if (nameMatch || boundsMatch)
+                            {
+                                targetOutput1 = output1;
+                                targetAdapter = adapter;
+                                foundTarget = true;
+                                break;
+                            }
+                            output1.Dispose();
+                        }
                     }
-                    output1.Dispose();
-                }
-            }
 
-            if (foundTarget) break;
-        }
-
-        // Fallback to specific display index if not found
-        if (!foundTarget)
-        {
-            int targetIndex = currentDisplay?.Index ?? 0;
-            int currentIndex = 0;
-
-            for (uint adapterIndex = 0;
-                factory.EnumAdapters1(adapterIndex, out var adapter).Success;
-                adapterIndex++)
-            {
-                for (uint outputIndex = 0;
-                    adapter.EnumOutputs(outputIndex, out var output).Success;
-                    outputIndex++)
-                {
-                    if (currentIndex == targetIndex)
-                    {
-                        Debug.WriteLine($"Found display at index {targetIndex}");
-                        targetOutput1 = output.QueryInterface<IDXGIOutput1>();
-                        targetAdapter = adapter;
-                        foundTarget = true;
-                        break;
-                    }
-                    currentIndex++;
-                    output.Dispose();
+                    if (foundTarget) break;
                 }
 
-                if (foundTarget)
-                    break;
-                adapter.Dispose();
+                // Fallback to specific display index if not found
+                if (!foundTarget)
+                {
+                    int targetIndex = currentDisplay?.Index ?? 0;
+                    int currentIndex = 0;
+
+                    for (uint adapterIndex = 0;
+                        factory.EnumAdapters1(adapterIndex, out var adapter).Success;
+                        adapterIndex++)
+                    {
+                        for (uint outputIndex = 0;
+                            adapter.EnumOutputs(outputIndex, out var output).Success;
+                            outputIndex++)
+                        {
+                            if (currentIndex == targetIndex)
+                            {
+                                Debug.WriteLine($"Found display at index {targetIndex}");
+                                targetOutput1 = output.QueryInterface<IDXGIOutput1>();
+                                targetAdapter = adapter;
+                                foundTarget = true;
+                                break;
+                            }
+                            currentIndex++;
+                            output.Dispose();
+                        }
+
+                        if (foundTarget)
+                            break;
+                        adapter.Dispose();
+                    }
+                }
+
+                if (targetAdapter == null || targetOutput1 == null)
+                {
+                    throw new Exception("No suitable display output found");
+                }
+
+                FeatureLevel[] featureLevels = {
+                    FeatureLevel.Level_12_2,
+                    FeatureLevel.Level_12_1,
+                    FeatureLevel.Level_12_0,
+                    FeatureLevel.Level_11_1,
+                    FeatureLevel.Level_11_0,
+                    FeatureLevel.Level_10_1,
+                    FeatureLevel.Level_10_0,
+                    FeatureLevel.Level_9_3,
+                    FeatureLevel.Level_9_2,
+                    FeatureLevel.Level_9_1
+                };
+
+                // Create D3D11 device
+                var result = D3D11.D3D11CreateDevice(
+                    targetAdapter,
+                    DriverType.Unknown,
+                    DeviceCreationFlags.None,
+                    featureLevels,
+                    out _dxDevice);
+
+                if (result.Failure || _dxDevice == null)
+                {
+                    result = D3D11.D3D11CreateDevice(
+                      targetAdapter,
+                      DriverType.Unknown,
+                      DeviceCreationFlags.None,
+                      null,
+                      out _dxDevice);
+
+                    if (result.Failure || _dxDevice == null)
+                        throw new Exception($"Failed to create D3D11 device: {result}");
+                }
+
+                // Create desktop duplication
+                _deskDuplication = targetOutput1.DuplicateOutput(_dxDevice);
+                _consecutiveFailures = 0; //reset on success
+
+                Debug.WriteLine("DXGI Duplication initialized successfully.");
+            }
+            catch (SharpGenException ex) when (ex.ResultCode == Vortice.DXGI.ResultCode.Unsupported || ex.HResult == unchecked((int)0x887A0004))
+            {
+                Debug.WriteLine($"DirectX Desktop Duplication not supported: {ex.Message}");
+                _directXFailedPermanently = true;
+                DisposeDxgiResources();
+
+                Dictionary.dropdownState["Screen Capture Method"] = "GDI+";
+                _currentCaptureMethod = "GDI+";
+
+                ShowNoticeOnUIThread("DirectX Desktop Duplication not supported on this system. Switched to GDI+ capture.", 6000);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"InitializeDxgiDuplication failed: {ex.Message}");
+                DisposeDxgiResources();
+                throw;
             }
         }
-
-        if (targetAdapter == null || targetOutput1 == null)
-        {
-            throw new Exception("No suitable display output found");
-        }
-
-        FeatureLevel[] featureLevels = {
-    FeatureLevel.Level_12_2,
-    FeatureLevel.Level_12_1,
-    FeatureLevel.Level_12_0,
-    FeatureLevel.Level_11_1,
-    FeatureLevel.Level_11_0,
-    FeatureLevel.Level_10_1,
-    FeatureLevel.Level_10_0,
-    FeatureLevel.Level_9_3,
-    FeatureLevel.Level_9_2,
-    FeatureLevel.Level_9_1
-};
-
-        // Create D3D11 device
-        var result = D3D11.D3D11CreateDevice(
-            targetAdapter,
-            DriverType.Unknown,
-            DeviceCreationFlags.None,
-            featureLevels,
-            out _dxDevice);
-
-        if (result.Failure || _dxDevice == null)
-        {
-            result = D3D11.D3D11CreateDevice(
-              targetAdapter,
-              DriverType.Unknown,
-              DeviceCreationFlags.None,
-              null,
-              out _dxDevice);
-
-            if (result.Failure || _dxDevice == null)
-                throw new Exception($"Failed to create D3D11 device: {result}");
-        }
-
-        // Create desktop duplication
-        _deskDuplication = targetOutput1.DuplicateOutput(_dxDevice);
-        _consecutiveFailures = 0; //reset on success
-
-        Debug.WriteLine("DXGI Duplication initialized successfully.");
-    }
-    catch (SharpGenException ex) when (ex.ResultCode == Vortice.DXGI.ResultCode.Unsupported || ex.HResult == unchecked((int)0x887A0004))
-    {
-        Debug.WriteLine($"DirectX Desktop Duplication not supported: {ex.Message}");
-        _directXFailedPermanently = true;
-        DisposeDxgiResources();
-
-        Dictionary.dropdownState["Screen Capture Method"] = "GDI+";
-        _currentCaptureMethod = "GDI+";
-
-        ShowNoticeOnUIThread("DirectX Desktop Duplication not supported on this system. Switched to GDI+ capture.", 6000);
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"InitializeDxgiDuplication failed: {ex.Message}");
-        DisposeDxgiResources();
-        throw;
-    }
-}
 
         private Bitmap? DirectX(Rectangle detectionBox)
         {
@@ -274,7 +274,7 @@ namespace AILogic
 
                     if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                         lock (_displayLock) { _displayChangesPending = true; }
-                    
+
                     return GetCachedFrame(detectionBox);
                 }
                 else if (result != Result.Ok)
@@ -363,7 +363,7 @@ namespace AILogic
 
                 if (++_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                     lock (_displayLock) { _displayChangesPending = true; }
-                
+
                 return GetCachedFrame(detectionBox);
             }
             finally
@@ -378,7 +378,7 @@ namespace AILogic
                 catch { }
 
                 desktopResource?.Dispose();
-            
+
             }
         }
 
