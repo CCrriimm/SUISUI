@@ -157,6 +157,7 @@ namespace AILogic
                 }
 
                 FeatureLevel[] featureLevels = {
+                    FeatureLevel.Level_12_2,
                     FeatureLevel.Level_12_1,
                     FeatureLevel.Level_12_0,
                     FeatureLevel.Level_11_1,
