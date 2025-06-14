@@ -110,32 +110,6 @@ This has meant that while we do currently use out of pocket expenses to run Aimm
 
 We do not seek to make money from Aimmy, we only seek your kind words <3, and a chance to help people aim better, by assisting their aim or even to train how they aim (yes, you can use Aimmy in that way too)
 
-## What is the Web Model
-The web model is a TFJS (TensorFlow Javascript) export of the model. This allow you to use the model for image labeling, which then images can be sent to us to help further train the PF/Universal model or you can use those images to train your own YOLOv8 model.
-You may wonder, "Why is it in YOLOv5 and not YOLOv8?". This is due to us using the tool called MakeSense, it to me is one of the easiest tools and is all web based. I am sure there are other tools that may accept the YOLOv8 web model.
-
-You can visit MakeSense here: https://www.makesense.ai
-You then can simply load all of your images in and select Object Detection.
-
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/35046774-b70b-4264-8c26-eba5fe0b6b9e)
-
-
-Then run the AI locally, select YOLOv5, and upload all the web model files.
-
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/78e6329d-0b55-453e-baf1-47186020b2b8)
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/0f13a664-0d0e-41aa-84b2-9d7f96daea1c)
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/f0896522-954d-4120-926f-b691673c802a)
-
-
-You can now go through your images and click and drag to highlight any Enemies on screen and approve the auto detected enemies from the web model:
-
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/f1288009-5e7a-4360-a1c5-bee9faf7f387)
-
-Once you are finished labeling you'll want to export the labels for AI training:
-
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/1af932c3-adde-4138-86f5-1c59934afae7)
-![image](https://github.com/MarsQQ/Aimmy/assets/22938086/05cc8837-8131-4035-897c-722301a0233b)
-
 ## How do I train my own model
 Please see the video tutorial bellow on how to label images and train your own model. (Redirects to Youtube)
 [![Watch the video on Youtube](https://img.youtube.com/vi/i98wF4218-Q/maxresdefault.jpg)](https://youtu.be/i98wF4218-Q)
