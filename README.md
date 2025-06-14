@@ -111,50 +111,8 @@ This has meant that while we do currently use out of pocket expenses to run Aimm
 We do not seek to make money from Aimmy, we only seek your kind words <3, and a chance to help people aim better, by assisting their aim or even to train how they aim (yes, you can use Aimmy in that way too)
 
 ## How do I train my own model
-Please see the video tutorial bellow on how to label images and train your own model. (Redirects to Youtube)
+Please see the video tutorial below on how to label images and train your own model. (Redirects to Youtube)
 [![Watch the video on Youtube](https://img.youtube.com/vi/i98wF4218-Q/maxresdefault.jpg)](https://youtu.be/i98wF4218-Q)
 
 ## How do I upload my model to the "Downloadable Models" menu?
-
-If you are not aware already, Aimmy contains a "Downloadable Models" tab that allows you to download models developed and shared by the Aimmy Community.
-
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DownloadableModels.png">
-
-Aimmy pulls these models from the [Aimmy repository](https://github.com/Babyhamsta/Aimmy/tree/master/models), this means **anyone can upload models to the "Downloadable Models" tab by making a pull request**.
-
-To start, please note that if you would like to be credited for your work, name your model as:
-**[Game Name/Model Name]** by **[The Creator]**
-
-If you would like to stay anonymous however, you may only list the Game Name/Model Name.
-
-Now, fork the Aimmy Repository
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT1.png">
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT2.png">
-
-After that, go to your fork's model folder
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT3.png">
-
-Press "Add File"
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT4.png">
-
-Drag your model onto the area that contains the text "Drag additional files here to add them to your repository"
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT5.png">
-
-and press "Commit Changes" when the green progress bar disappears
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT6.png">
-
-Now go to the "Pull requests" tab
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT7.png">
-
-Create a new pull request
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT8.png">
-
-Create the pull request
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT9.png">
-
-Create the pull request (again)
-<img src="https://raw.githubusercontent.com/MarsQQ/Aimmy/master/readme_assets/DT10.png">
-
-You are done! We will review your pull request and your model will be added in 24-48 hours. If you would like to remove your model from the "Downloadable Models" tab, you may make another pull request or contact us on the Issues tab.
-
-For anyone who does this, thank you so much =D, Aimmy genuinely thrives with community contributions and support, and making and sharing your Aimmy models genuinely means a lot to us! Thank you!
+Please read the tutorial at [UploadModel.md](ModelUpload.md)
