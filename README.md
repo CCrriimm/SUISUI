@@ -3,7 +3,7 @@
 > If you enjoy Aimmy, please consider giving us a star ⭐! We appreciate it! :)
   <p>
     <a href="https://aimmy.dev/" target="_blank">
-      <img width="100%" src="https://raw.githubusercontent.com/Babyhamsta/Aimmy/master/readme_assets/AimmyV2Banner.png"></a>
+      <img width="100%" src="readme_assets/AimmyV2Banner.png"></a>
   </p>
 
 Aimmy is a universal AI-Based Aim Alignment Mechanism developed by BabyHamsta, MarsQQ & Taylor to make gaming more accessible for users who have difficulty aiming.
@@ -84,7 +84,7 @@ When you press the trigger binding, Aimmy will capture the screen and run the im
 ## Setup
 - Download and Install the x64 version of [.NET Runtime 8.0.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-8.0.2-windows-x64-installer)
 - Download and Install the x64 version of [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
-- Download Aimmy from [Releases](https://github.com/BabyHamsta/Aimmy/releases) (Make sure it's the Aimmy zip and not Source zip)
+- Download Aimmy from [Releases](releases) (Make sure it's the Aimmy zip and not Source zip)
 - Extract the Aimmy.zip file
 - Run Aimmy.exe
 - Choose your Model and Enjoy :)
@@ -92,7 +92,7 @@ When you press the trigger binding, Aimmy will capture the screen and run the im
 ## How is Aimmy better than similar AI-Based tools?
 Aimmy is written in C# using .NET 8 and WPF utilizing pre-existing libraries like DirectML and ONNX. This has allowed us to make a very fast Aim Aligner with high compatiblity on both AMD and NVIDIA GPUs without sacrificing the end-user experience.
 
-![Example of Model switching](https://github.com/Babyhamsta/Aimmy/blob/master/readme_assets/UI.gif?raw=true)
+![Example of Model switching](readme_assets/UI.gif?raw=true)
 
 Beyond the core functionality, Aimmy also adds some amazing additional features like Detection ESP and Anti-Recoil to help you tune your gaming experience however you like it.
 
