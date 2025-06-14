@@ -1,10 +1,10 @@
-﻿using System.Diagnostics;
+﻿using Aimmy2.Class;
+using SharpGen.Runtime;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows;
 using System.Windows.Threading;
-using Aimmy2.Class;
-using SharpGen.Runtime;
 using Visuality;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -21,6 +21,7 @@ namespace AILogic
         private bool _notificationShown = false; // Prevent spam notifications
 
         private const int IMAGE_SIZE = 640;
+        // Capturing
         public Bitmap? screenCaptureBitmap { get; private set; }
         private ID3D11Device? _dxDevice;
         private IDXGIOutputDuplication? _deskDuplication;
@@ -82,7 +83,7 @@ namespace AILogic
                     factory.EnumAdapters1(adapterIndex, out var adapter).Success;
                     adapterIndex++)
                 {
-                    Debug.WriteLine($"\nAdapter {adapterIndex}:");
+                    Debug.WriteLine($"\nAdapter: {adapterIndex}");
 
                     for (uint outputIndex = 0;
                         adapter.EnumOutputs(outputIndex, out var output).Success;
@@ -156,7 +157,7 @@ namespace AILogic
                 }
 
                 FeatureLevel[] featureLevels = {
-                    FeatureLevel.Level_12_2,
+                    FeatureLevel.Level_12_2, // 50 series support
                     FeatureLevel.Level_12_1,
                     FeatureLevel.Level_12_0,
                     FeatureLevel.Level_11_1,
@@ -213,7 +214,6 @@ namespace AILogic
                 throw;
             }
         }
-
         private Bitmap? DirectX(Rectangle detectionBox)
         {
             int w = detectionBox.Width;
@@ -234,11 +234,16 @@ namespace AILogic
                     }
                 }
 
-                // Check if we need new staging texture - always match requested size
-                //bool requiresNewResources = _stagingTex == null ||
-                //    _stagingTex.Description.Width != detectionBox.Width ||
-                //    _stagingTex.Description.Height != detectionBox.Height;
+                // making sure its not using the GDI bitmap.
+                if (screenCaptureBitmap == null ||
+                    screenCaptureBitmap.Width != w ||
+                    screenCaptureBitmap.Height != h)
+                {
+                    screenCaptureBitmap?.Dispose();
+                    screenCaptureBitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                }
 
+                // Check if we need new staging texture - always match requested size
                 if (_stagingTex == null ||
                     _stagingTex.Description.Width != w ||
                     _stagingTex.Description.Height != h)
@@ -260,7 +265,7 @@ namespace AILogic
 
 
                 // Try to acquire next frame with a reasonable timeout
-                var result = _deskDuplication!.AcquireNextFrame(15, out var frameInfo, out desktopResource);
+                var result = _deskDuplication!.AcquireNextFrame(1, out var frameInfo, out desktopResource);
 
                 if (result == Vortice.DXGI.ResultCode.WaitTimeout)
                 {
@@ -313,46 +318,51 @@ namespace AILogic
                         var box = new Box(srcLeft, srcTop, 0, srcRight, srcBottom, 1);
 
                         _dxDevice.ImmediateContext.CopySubresourceRegion(
-                       _stagingTex, 0,
-                       (uint)(srcLeft - relativeDetectionLeft),
-                       (uint)(srcTop - relativeDetectionTop),
-                       0,
-                       screenTexture, 0, box);
+                               _stagingTex, 0,
+                               (uint)(srcLeft - relativeDetectionLeft),
+                               (uint)(srcTop - relativeDetectionTop),
+                               0,
+                               screenTexture, 0, box);
                     }
 
                     var map = _dxDevice.ImmediateContext.Map(_stagingTex, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
-                    var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb);
-
-                    // Clear bitmap to black to match GDI behavior for out-of-bounds areas
-                    using (var g = Graphics.FromImage(bitmap))
-                        g.Clear(System.Drawing.Color.Black);
-
                     var boundsRect = new Rectangle(0, 0, w, h);
-                    BitmapData? mapDest = bitmap.LockBits(boundsRect, ImageLockMode.WriteOnly, bitmap.PixelFormat); ;
+                    BitmapData? mapDest = screenCaptureBitmap.LockBits(boundsRect, ImageLockMode.WriteOnly, screenCaptureBitmap.PixelFormat); ;
 
                     try
                     {
                         unsafe
                         {
-                            int bytesPerRow = w * 4;
                             byte* src = (byte*)map.DataPointer;
                             byte* dst = (byte*)mapDest.Scan0;
+                            int srcStride = (int)map.RowPitch;
+                            int dstStride = mapDest.Stride;
+                            int bytesPerRow = w * 4;
 
-                            for (int y = 0; y < h; y++)
+                            // Check if we can do bulk copy
+                            if (srcStride == dstStride)
                             {
-                                Buffer.MemoryCopy(src, dst, bytesPerRow, bytesPerRow);
-                                src += map.RowPitch;
-                                dst += mapDest.Stride;
+                                Buffer.MemoryCopy(src, dst, dstStride * h, srcStride * h);
+                            }
+                            else
+                            {
+                                int minStride = Math.Min(srcStride, dstStride);
+                                for (int y = 0; y < h; y++)
+                                {
+                                    Buffer.MemoryCopy(src, dst, bytesPerRow, bytesPerRow);
+                                    src += srcStride;
+                                    dst += dstStride;
+                                }
                             }
                         }
 
                         // Update cache
-                        UpdateCache(bitmap, detectionBox);
-                        return bitmap;
+                        UpdateCache(screenCaptureBitmap, detectionBox);
+                        return screenCaptureBitmap;
                     }
                     finally
                     {
-                        bitmap.UnlockBits(mapDest);
+                        screenCaptureBitmap.UnlockBits(mapDest);
                         _dxDevice.ImmediateContext.Unmap(_stagingTex, 0);
                     }
                 }
@@ -381,7 +391,7 @@ namespace AILogic
 
             }
         }
-
+        #region Frame Caching
         private void UpdateCache(Bitmap frame, Rectangle bounds)
         {
             // Dispose old cached frame if bounds changed
@@ -411,11 +421,13 @@ namespace AILogic
             // Return a clone of the cached frame
             return (Bitmap)_cachedFrame.Clone();
         }
-
+        #endregion
+        #region dispose
         public void DisposeDxgiResources()
         {
             try
             {
+
                 // Try to release any pending frame
                 if (_deskDuplication != null)
                 {
@@ -430,6 +442,7 @@ namespace AILogic
                 _stagingTex?.Dispose();
                 _dxDevice?.Dispose();
                 _cachedFrame?.Dispose();
+                screenCaptureBitmap?.Dispose();
 
                 _deskDuplication = null;
                 _stagingTex = null;
@@ -444,6 +457,7 @@ namespace AILogic
                 Debug.WriteLine($"Error disposing DXGI resources: {ex.Message}");
             }
         }
+        #endregion
         #endregion
 
         #region GDI
