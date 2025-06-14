@@ -253,9 +253,9 @@ namespace Aimmy2.Controls
                     {
                         var value = s.Slider.Value;
                         if (value >= 0.98)
-                            ShowNotice("The Mouse Sensitivity you have set can cause Aimmy to be unable to aim, please decrease if you suffer from this problem");
+                            new NoticeBar("The Mouse Sensitivity you have set can cause Aimmy to be unable to aim, please decrease if you suffer from this problem").Show();
                         else if (value <= 0.1)
-                            ShowNotice("The Mouse Sensitivity you have set can cause Aimmy to be unstable to aim, please increase if you suffer from this problem");
+                            new NoticeBar("The Mouse Sensitivity you have set can cause Aimmy to be unstable to aim, please increase if you suffer from this problem").Show();
                     };
                 })
                 .AddSlider("Mouse Jitter", "Jitter", 1, 1, 0, 15, s => uiManager.S_MouseJitter = s)
@@ -344,7 +344,7 @@ namespace Aimmy2.Controls
                         if (saveFileDialog.ShowDialog() == true)
                         {
                             SaveDictionary.WriteJSON(Dictionary.AntiRecoilSettings, saveFileDialog.FileName);
-                            ShowNotice($"[Anti Recoil] Config has been saved to \"{saveFileDialog.FileName}\"", 2000);
+                            new NoticeBar($"[Anti Recoil] Config has been saved to \"{saveFileDialog.FileName}\"", 2000).Show();
                         }
                     };
                 })
@@ -422,7 +422,7 @@ namespace Aimmy2.Controls
 
             builder.AddDropdown("Tracer Position", d =>
             {
-                d.DropdownBox.SelectedIndex = -1;
+                d.DropdownBox.SelectedIndex = 0;
                 uiManager.D_TracerPosition = d;
                 _mainWindow.AddDropdownItem(d, "Bottom");
                 _mainWindow.AddDropdownItem(d, "Middle");
@@ -490,9 +490,6 @@ namespace Aimmy2.Controls
                 updateAction(color);
             }
         }
-
-        private void ShowNotice(string message, int duration = 10000) =>
-            new NoticeBar(message, duration).Show();
 
         public void Dispose()
         {

@@ -1,13 +1,10 @@
-﻿using Aimmy2.Class;
-using Aimmy2.Theme;
+﻿using Aimmy2.Theme;
 using Class;
-using System;
-using System.Collections.Generic;
 using System.Windows;
 
 namespace Aimmy2
 {
-    public partial class App : System.Windows.Application
+    public partial class App : Application
     {
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -17,6 +14,13 @@ namespace Aimmy2
             // Set shutdown mode to prevent app from closing when startup window closes
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+#if DEBUG
+            var _mainWindow = new MainWindow();
+            MainWindow = _mainWindow;
+            _mainWindow.Show();
+            return;
+#endif
+            // code IS reachable, only in release though
             try
             {
                 // Create and show startup window
