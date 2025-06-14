@@ -186,9 +186,9 @@ namespace Aimmy2.Controls
                     {
                         var value = s.Slider.Value;
                         if (value >= 95)
-                            ShowNotice("The minimum confidence you have set for Aimmy to be too high and may be unable to detect players.");
+                            new NoticeBar("The minimum confidence you have set for Aimmy to be too high and may be unable to detect players.").Show();
                         else if (value <= 35)
-                            ShowNotice("The minimum confidence you have set for Aimmy may be too low can cause false positives.");
+                            new NoticeBar("The minimum confidence you have set for Aimmy may be too low can cause false positives.").Show();
                     };
                 })
                 .AddToggle("Mouse Background Effect", t => uiManager.T_MouseBackgroundEffect = t)
@@ -248,11 +248,11 @@ namespace Aimmy2.Controls
                 {
                     DisplayManager.RefreshDisplays();
                     uiManager.DisplaySelector.RefreshDisplays();
-                    ShowNotice("Display list refreshed successfully");
+                    new NoticeBar("Display list refreshed successfully").Show();
                 }
                 catch (Exception ex)
                 {
-                    ShowNotice($"Error refreshing displays: {ex.Message}");
+                    new NoticeBar($"Error refreshing displays: {ex.Message}").Show();
                 }
             };
             DisplaySelectMenu.Children.Insert(insertIndex + 1, refreshButton);
@@ -276,7 +276,7 @@ namespace Aimmy2.Controls
             uiManager.ThemeColorWheel = new AColorWheel();
 
             // Insert before separator
-            var insertIndex = ThemeMenu.Children.Count - 1;
+            var insertIndex = ThemeMenu.Children.Count - 2;
             ThemeMenu.Children.Insert(insertIndex, uiManager.ThemeColorWheel);
         }
 
@@ -290,7 +290,7 @@ namespace Aimmy2.Controls
             {
                 try
                 {
-                    ShowNotice($"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})");
+                    new NoticeBar($"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})").Show();
                     UpdateDisplayRelatedSettings(e);
                 }
                 catch (Exception ex)
@@ -309,9 +309,6 @@ namespace Aimmy2.Controls
             await Task.Delay(500);
             _mainWindow!.uiManager.D_MouseMovementMethod!.DropdownBox.SelectedIndex = 0;
         }
-
-        private void ShowNotice(string message, int duration = 4000) =>
-            new NoticeBar(message, duration).Show();
 
         public void Dispose()
         {
