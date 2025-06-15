@@ -289,6 +289,8 @@ namespace Aimmy2.Controls
                     t.Minimize.Click += (s, e) => TogglePanel("Auto Trigger", TriggerBotPanel);
                 })
                 .AddToggle("Auto Trigger", t => uiManager.T_AutoTrigger = t)
+                .AddToggle("Cursor Check", t => uiManager.T_CursorCheck = t)
+                .AddToggle("Spray Mode", t => uiManager.T_SprayMode = t)
                 .AddSlider("Auto Trigger Delay", "Seconds", 0.01, 0.1, 0.01, 1, s => uiManager.S_AutoTriggerDelay = s)
                 .AddSeparator();
         }

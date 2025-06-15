@@ -159,7 +159,7 @@ namespace Aimmy2.AILogic
                 }
 
                 lines.Add($"Overall FPS: {(iterationCount > 0 ? 1000.0 / (totalTime / (double)iterationCount) : 0):F2}");
-                
+
                 //File.WriteAllLines("AIManager_Benchmarks.txt", lines);
 
                 LogManager.Log(LogManager.LogLevel.Info, string.Join(Environment.NewLine, lines));
@@ -266,7 +266,7 @@ namespace Aimmy2.AILogic
                     LogManager.Log(LogLevel.Error,
                         $"Output shape does not match the expected shape of {string.Join("x", expectedShape)}.\nThis model will not work with Aimmy, please use an YOLOv8 model converted to ONNXv8.",
                         true, 10000);
-                    
+
                 }
             }
         }
@@ -360,11 +360,55 @@ namespace Aimmy2.AILogic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task AutoTrigger()
         {
-            if (Dictionary.toggleState["Auto Trigger"] &&
-                (InputBindingManager.IsHoldingBinding("Aim Keybind") || Dictionary.toggleState["Constant AI Tracking"]))
+            if (!Dictionary.toggleState["Auto Trigger"] ||
+                !(InputBindingManager.IsHoldingBinding("Aim Keybind") || 
+                !(InputBindingManager.IsHoldingBinding("Second Aim Keybind"))) ||
+                Dictionary.toggleState["Constant AI Tracking"])
+            {
+                CheckSprayRelease();
+                return;
+            }
+
+            if (Dictionary.toggleState["Spray Mode"])
+            {
+                await MouseManager.DoTriggerClick(LastDetectionBox);
+                return;
+            }
+
+
+            if (Dictionary.toggleState["Cursor Check"])
+            {
+                var mousePos = WinAPICaller.GetCursorPosition();
+
+                if (!DisplayManager.IsPointInCurrentDisplay(new System.Windows.Point(mousePos.X, mousePos.Y)))
+                {
+                    return;
+                }
+
+                if (LastDetectionBox.Contains(mousePos.X, mousePos.Y))
+                {
+                    await MouseManager.DoTriggerClick(LastDetectionBox);
+                }
+            }
+            else
             {
                 await MouseManager.DoTriggerClick();
-                if (!Dictionary.toggleState["Aim Assist"] && !Dictionary.toggleState["Show Detected Player"]) return;
+            }
+
+            if (!Dictionary.toggleState["Aim Assist"] || !Dictionary.toggleState["Show Detected Player"]) return;
+
+        }
+        private void CheckSprayRelease()
+        {
+            if (!Dictionary.toggleState["Spray Mode"]) return;
+
+            bool shouldSpray = Dictionary.toggleState["Auto Trigger"] &&
+                ((InputBindingManager.IsHoldingBinding("Aim Keybind") || InputBindingManager.IsHoldingBinding("Second Aim Keybind")) ||
+                Dictionary.toggleState["Constant AI Tracking"]);
+
+            if (!shouldSpray)
+            {
+                MouseManager.ResetSprayState();
             }
         }
 

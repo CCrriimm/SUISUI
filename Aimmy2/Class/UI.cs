@@ -39,6 +39,8 @@ namespace Class
         public ATitle? AT_TriggerBot { get; set; }
 
         public AToggle? T_AutoTrigger { get; set; }
+        public AToggle? T_SprayMode { get; set; }
+        public AToggle? T_CursorCheck { get; set; }
 
         public ASlider? S_AutoTriggerDelay { get; set; }
 
