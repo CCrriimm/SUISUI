@@ -128,7 +128,7 @@ namespace Aimmy2
         private void LoadInitialMenu()
         {
             LoadMenu("AimMenu");
-            UpdateOffsetSliderVisibility(uiManager);
+            UpdateSliderVisibility(uiManager);
             _currentMenu = "AimMenu";
         }
 
@@ -602,6 +602,7 @@ namespace Aimmy2
                         FOVWindow.ForceReposition();
                     }
                 },
+                ["Sticky Aim"] = () => UpdateSliderVisibility(uiManager),
                 ["Show Detected Player"] = () =>
                 {
                     ShowHideDPWindow();
@@ -619,8 +620,8 @@ namespace Aimmy2
                 {
                     MouseManager.IsEMASmoothingEnabled = Dictionary.toggleState[title];
                 },
-                ["X Axis Percentage Adjustment"] = () => UpdateOffsetSliderVisibility(uiManager),
-                ["Y Axis Percentage Adjustment"] = () => UpdateOffsetSliderVisibility(uiManager)
+                ["X Axis Percentage Adjustment"] = () => UpdateSliderVisibility(uiManager),
+                ["Y Axis Percentage Adjustment"] = () => UpdateSliderVisibility(uiManager)
             };
 
             if (actions.TryGetValue(title, out var action))
@@ -628,10 +629,13 @@ namespace Aimmy2
                 action();
             }
         }
-        private static void UpdateOffsetSliderVisibility(UI uiManager)
+        private static void UpdateSliderVisibility(UI uiManager)
         {
             bool useYPercent = Dictionary.toggleState["Y Axis Percentage Adjustment"];
             bool useXPercent = Dictionary.toggleState["X Axis Percentage Adjustment"];
+            bool thresholdEnabled = Dictionary.toggleState["Sticky Aim"];
+
+            uiManager.S_StickyAimThreshold.Visibility = thresholdEnabled ? Visibility.Visible : Visibility.Collapsed;
 
             uiManager.S_YOffset.Visibility = useYPercent ? Visibility.Collapsed : Visibility.Visible;
             uiManager.S_YOffsetPercent.Visibility = useYPercent ? Visibility.Visible : Visibility.Collapsed;
@@ -639,7 +643,7 @@ namespace Aimmy2
             uiManager.S_XOffset.Visibility = useXPercent ? Visibility.Collapsed : Visibility.Visible;
             uiManager.S_XOffsetPercent.Visibility = useXPercent ? Visibility.Visible : Visibility.Collapsed;
         }
-
+        
         private Visibility GetToggleVisibility(string title, bool collapsed = false) =>
             Dictionary.toggleState[title]
                 ? Visibility.Visible
