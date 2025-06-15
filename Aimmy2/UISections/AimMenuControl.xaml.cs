@@ -165,6 +165,7 @@ namespace Aimmy2.Controls
                 })
                 .AddKeyChanger("Aim Keybind", k => uiManager.C_Keybind = k)
                 .AddKeyChanger("Second Aim Keybind")
+                .AddToggle("Sticky Aim", t => uiManager.T_StickyAim = t)
                 .AddToggle("Constant AI Tracking", t =>
                 {
                     uiManager.T_ConstantAITracking = t;
@@ -260,6 +261,17 @@ namespace Aimmy2.Controls
                     };
                 })
                 .AddSlider("Mouse Jitter", "Jitter", 1, 1, 0, 15, s => uiManager.S_MouseJitter = s)
+                .AddSlider("Sticky Aim Threshold", "Pixels", 1, 1, 0, 100, s =>
+                {
+                    uiManager.S_StickyAimThreshold = s;
+                    var value = s.Slider.Value;
+                    if(value <= 10)
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warning,
+                            "The threshold you have set may cause sticky aim to not work as intended, please increase if you suffer from this issue.\nINFO: The Sticky aim threshold is how many pixels it will take until it realizes the target is gone and moves on to another target",
+                            true, 10000);
+                    }
+                })
                 .AddSlider("Y Offset (Up/Down)", "Offset", 1, 1, -150, 150, s => uiManager.S_YOffset = s)
                 .AddSlider("Y Offset (%)", "Percent", 1, 1, 0, 100, s => uiManager.S_YOffsetPercent = s)
                 .AddSlider("X Offset (Left/Right)", "Offset", 1, 1, -150, 150, s => uiManager.S_XOffset = s)
@@ -276,7 +288,6 @@ namespace Aimmy2.Controls
                     };
                 });
         }
-
         private void LoadTriggerBot()
         {
             var uiManager = _mainWindow!.uiManager;
@@ -291,6 +302,7 @@ namespace Aimmy2.Controls
                 .AddToggle("Auto Trigger", t => uiManager.T_AutoTrigger = t)
                 .AddToggle("Cursor Check", t => uiManager.T_CursorCheck = t)
                 .AddToggle("Spray Mode", t => uiManager.T_SprayMode = t)
+                //.AddToggle("Only When Held", t => uiManager.T_OnlyWhenHeld = t) 
                 .AddSlider("Auto Trigger Delay", "Seconds", 0.01, 0.1, 0.01, 1, s => uiManager.S_AutoTriggerDelay = s)
                 .AddSeparator();
         }

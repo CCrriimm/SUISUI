@@ -87,6 +87,13 @@ namespace InputLogic
 
         public static async Task DoTriggerClick(RectangleF? detectionBox = null)
         {
+            // there was a toggle for this, but i realized if it was off, it would never stop spraying. - T
+            if (!(InputBindingManager.IsHoldingBinding("Aim Keybind") || InputBindingManager.IsHoldingBinding("Second Aim Keybind"))) 
+            {
+                ResetSprayState();
+                return;
+            }
+
 
             if (Dictionary.toggleState["Spray Mode"])
             {

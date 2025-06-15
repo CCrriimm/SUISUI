@@ -55,6 +55,12 @@ namespace Aimmy2.AILogic
         // For Auto-Labelling Data System
         private bool PlayerFound = false;
 
+        // Sticky-Aim 
+        private Prediction _currentTarget = null;
+        private int _consecutiveFramesWithoutTarget = 0;
+        private const int MAX_FRAMES_WITHOUT_TARGET = 3; // Allow 3 frames of target loss
+        //private const float TARGET_MATCH_THRESHOLD = 50f; (now is a slider, Dictionary.sliderSettings["Sticky Aim Threshold"])
+        
         private double CenterXTranslated = 0;
         private double CenterYTranslated = 0;
 
@@ -361,7 +367,7 @@ namespace Aimmy2.AILogic
         private async Task AutoTrigger()
         {
             if (!Dictionary.toggleState["Auto Trigger"] ||
-                !(InputBindingManager.IsHoldingBinding("Aim Keybind") || 
+                !(InputBindingManager.IsHoldingBinding("Aim Keybind") ||
                 !(InputBindingManager.IsHoldingBinding("Second Aim Keybind"))) ||
                 Dictionary.toggleState["Constant AI Tracking"])
             {
@@ -482,7 +488,6 @@ namespace Aimmy2.AILogic
                         centerX - labelEstimatedHalfWidth,
                         centerY - DetectedPlayerOverlay.DetectedPlayerConfidence.ActualHeight - 2, 0, 0);
                 }
-
                 var showTracers = Dictionary.toggleState["Show Tracers"];
                 DetectedPlayerOverlay.DetectedTracers.Opacity = showTracers ? 1 : 0;
                 if (showTracers)
@@ -776,31 +781,80 @@ namespace Aimmy2.AILogic
                 nearest = tree.NearestNeighbors(new double[] { IMAGE_SIZE / 2.0, IMAGE_SIZE / 2.0 }, 1);
             }
 
-            if (nearest != null && nearest.Length > 0)
+            foreach (var prediction in KDPredictions)
             {
-                // Translate coordinates
-                float translatedXMin = nearest[0].Item2.Rectangle.X + detectionBox.Left;
-                float translatedYMin = nearest[0].Item2.Rectangle.Y + detectionBox.Top;
-                LastDetectionBox = new RectangleF(translatedXMin, translatedYMin,
-                    nearest[0].Item2.Rectangle.Width, nearest[0].Item2.Rectangle.Height);
-
-                CenterXTranslated = nearest[0].Item2.CenterXTranslated;
-                CenterYTranslated = nearest[0].Item2.CenterYTranslated;
-
-                using (Benchmark("SaveFrame"))
-                {
-                    SaveFrame(frame, nearest[0].Item2);
-                }
-                return nearest[0].Item2;
+                prediction.ScreenCenterX = prediction.Rectangle.X + detectionBox.Left + prediction.Rectangle.Width / 2;
+                prediction.ScreenCenterY = prediction.Rectangle.Y + detectionBox.Top + prediction.Rectangle.Height / 2;
             }
-            else if (Dictionary.toggleState["Collect Data While Playing"] &&
-                     !Dictionary.toggleState["Constant AI Tracking"] &&
-                     !Dictionary.toggleState["Auto Label Data"])
+
+            Prediction? bestCandidate = (nearest.Length > 0) ? nearest[0].Item2 : null;
+
+            Prediction finalTarget = null;
+            
+            bool stickyAimEnabled = Dictionary.toggleState["Sticky Aim"];
+
+            if (stickyAimEnabled)
             {
-                using (Benchmark("SaveFrame"))
+                if (_currentTarget != null)
                 {
-                    SaveFrame(frame);
+                    Prediction matchedTarget = null;
+                    float minDistance = float.MaxValue;
+                    float threshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
+
+                    foreach (var candidate in KDPredictions)
+                    {
+                        float distance = Distance(_currentTarget, candidate);
+                        if (distance < minDistance && distance < threshold)
+                        {
+                            minDistance = distance;
+                            matchedTarget = candidate;
+                        }
+                    }
+
+                    if (matchedTarget != null)
+                    {
+                        finalTarget = matchedTarget;
+                        _consecutiveFramesWithoutTarget = 0;
+                    }
+                    else
+                    {
+                        _consecutiveFramesWithoutTarget++;
+
+                        // Reset if target is lost for too long
+                        if (_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
+                        {
+                            _currentTarget = null;
+                            finalTarget = bestCandidate;
+                        }
+                    }
                 }
+                else
+                {
+                    finalTarget = bestCandidate;
+                }
+            }
+            else
+            {
+                finalTarget = bestCandidate;
+                _currentTarget = null; // Reset current target when sticky aim is disabled
+            }
+
+            if (finalTarget != null)
+            {
+                if(stickyAimEnabled) _currentTarget = finalTarget;
+
+                // Update detection box and save frame
+                float translatedXMin = finalTarget.Rectangle.X + detectionBox.Left;
+                float translatedYMin = finalTarget.Rectangle.Y + detectionBox.Top;
+                LastDetectionBox = new RectangleF(translatedXMin, translatedYMin,
+                    finalTarget.Rectangle.Width, finalTarget.Rectangle.Height);
+
+                CenterXTranslated = finalTarget.CenterXTranslated;
+                CenterYTranslated = finalTarget.CenterYTranslated;
+
+                using (Benchmark("SaveFrame"))
+                    SaveFrame(frame, finalTarget);
+                return finalTarget;
             }
 
             return null;
@@ -837,7 +891,9 @@ namespace Aimmy2.AILogic
                     Rectangle = rect,
                     Confidence = objectness,
                     CenterXTranslated = (x_center - detectionBox.Left) / IMAGE_SIZE,
-                    CenterYTranslated = (y_center - detectionBox.Top) / IMAGE_SIZE
+                    CenterYTranslated = (y_center - detectionBox.Top) / IMAGE_SIZE,
+                    ScreenCenterX = detectionBox.Left + x_center,
+                    ScreenCenterY = detectionBox.Top + y_center
                 };
 
                 KDpoints.Add(new double[] { x_center, y_center });
@@ -902,6 +958,12 @@ namespace Aimmy2.AILogic
 
             return dist;
         };
+        private float Distance(Prediction a, Prediction b)
+        {
+            float dx = a.ScreenCenterX - b.ScreenCenterX;
+            float dy = a.ScreenCenterY - b.ScreenCenterY;
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
 
         private unsafe void BitmapToFloatArrayInPlace(Bitmap image, float[] result)
         {
@@ -994,6 +1056,8 @@ namespace Aimmy2.AILogic
             public float Confidence { get; set; }
             public float CenterXTranslated { get; set; }
             public float CenterYTranslated { get; set; }
+            public float ScreenCenterX { get; set; }  // Absolute screen position
+            public float ScreenCenterY { get; set; }
         }
     }
 }

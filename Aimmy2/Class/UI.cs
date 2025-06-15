@@ -13,6 +13,7 @@ namespace Class
 
         public AKeyChanger? C_Keybind { get; set; }
         public AToggle? T_ConstantAITracking { get; set; }
+        public AToggle? T_StickyAim { get; set; }
         public AToggle? T_Predictions { get; set; }
         public AToggle? T_EMASmoothing { get; set; }
         public AKeyChanger? C_EmergencyKeybind { get; set; }
@@ -29,6 +30,7 @@ namespace Class
         public ADropdown? D_AimingBoundariesAlignment { get; set; }
         public ASlider? S_MouseSensitivity { get; set; }
         public ASlider? S_MouseJitter { get; set; }
+        public ASlider? S_StickyAimThreshold { get; set; }
         public ASlider? S_YOffset { get; set; }
         public ASlider? S_YOffsetPercent { get; set; }
         public ASlider? S_XOffset { get; set; }
@@ -40,6 +42,7 @@ namespace Class
 
         public AToggle? T_AutoTrigger { get; set; }
         public AToggle? T_SprayMode { get; set; }
+        //public AToggle? T_OnlyWhenHeld { get; set; }
         public AToggle? T_CursorCheck { get; set; }
 
         public ASlider? S_AutoTriggerDelay { get; set; }

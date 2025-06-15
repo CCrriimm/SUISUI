@@ -128,6 +128,7 @@ namespace Aimmy2
         private void LoadInitialMenu()
         {
             LoadMenu("AimMenu");
+            UpdateOffsetSliderVisibility(uiManager);
             _currentMenu = "AimMenu";
         }
 
@@ -617,13 +618,26 @@ namespace Aimmy2
                 ["EMA Smoothening"] = () =>
                 {
                     MouseManager.IsEMASmoothingEnabled = Dictionary.toggleState[title];
-                }
+                },
+                ["X Axis Percentage Adjustment"] = () => UpdateOffsetSliderVisibility(uiManager),
+                ["Y Axis Percentage Adjustment"] = () => UpdateOffsetSliderVisibility(uiManager)
             };
 
             if (actions.TryGetValue(title, out var action))
             {
                 action();
             }
+        }
+        private static void UpdateOffsetSliderVisibility(UI uiManager)
+        {
+            bool useYPercent = Dictionary.toggleState["Y Axis Percentage Adjustment"];
+            bool useXPercent = Dictionary.toggleState["X Axis Percentage Adjustment"];
+
+            uiManager.S_YOffset.Visibility = useYPercent ? Visibility.Collapsed : Visibility.Visible;
+            uiManager.S_YOffsetPercent.Visibility = useYPercent ? Visibility.Visible : Visibility.Collapsed;
+
+            uiManager.S_XOffset.Visibility = useXPercent ? Visibility.Collapsed : Visibility.Visible;
+            uiManager.S_XOffsetPercent.Visibility = useXPercent ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private Visibility GetToggleVisibility(string title, bool collapsed = false) =>
@@ -939,6 +953,8 @@ namespace Aimmy2
                 ("FOV Size", uiManager.S_FOVSize, 640.0),
                 ("Mouse Sensitivity (+/-)", uiManager.S_MouseSensitivity, 0.8),
                 ("Mouse Jitter", uiManager.S_MouseJitter, 0.0),
+                ("Sticky Aim Threshold", uiManager.S_StickyAimThreshold, 50),
+                ("EMA Smoothening", uiManager.S_EMASmoothing, 0.5),
                 ("Y Offset (Up/Down)", uiManager.S_YOffset, 0.0),
                 ("X Offset (Left/Right)", uiManager.S_XOffset, 0.0),
                 ("Y Offset (%)", uiManager.S_YOffsetPercent, 0.0),

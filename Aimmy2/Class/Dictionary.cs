@@ -29,6 +29,7 @@ namespace Aimmy2.Class
             { "Dynamic FOV Size", 200 },
             { "Mouse Sensitivity (+/-)", 0.80 },
             { "Mouse Jitter", 4 },
+            { "Sticky Aim Threshold", 50 },
             { "Y Offset (Up/Down)", 0 },
             { "Y Offset (%)", 50 },
             { "X Offset (Left/Right)", 0 },
@@ -47,6 +48,7 @@ namespace Aimmy2.Class
         public static Dictionary<string, dynamic> toggleState = new()
         {
             { "Aim Assist", false },
+            { "Sticky Aim", false },
             { "Constant AI Tracking", false },
             { "Predictions", false },
             { "EMA Smoothening", false },
@@ -60,6 +62,8 @@ namespace Aimmy2.Class
             { "Show Detected Player", false },
             { "Cursor Check", false },
             { "Spray Mode", false },
+            //{ "Only When Held", false },
+            { "Show FOV", true },
             { "Show AI Confidence", false },
             { "Show Tracers", false },
             { "Collect Data While Playing", false },
