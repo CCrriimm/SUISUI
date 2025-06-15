@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -160,7 +159,7 @@ namespace Aimmy2.Controls
                         {
                             Dictionary.toggleState["Aim Assist"] = false;
                             _mainWindow.UpdateToggleUI(t, false);
-                            new NoticeBar("Please load a model first", 5000).Show();
+                            LogManager.Log(LogManager.LogLevel.Warning, "Please load a model first", true);
                         }
                     };
                 })
@@ -253,9 +252,11 @@ namespace Aimmy2.Controls
                     {
                         var value = s.Slider.Value;
                         if (value >= 0.98)
-                            new NoticeBar("The Mouse Sensitivity you have set can cause Aimmy to be unable to aim, please decrease if you suffer from this problem").Show();
+                            LogManager.Log(LogManager.LogLevel.Warning, 
+                                "The Mouse Sensitivity you have set can cause Aimmy to be unable to aim, please decrease if you suffer from this problem", true);
                         else if (value <= 0.1)
-                            new NoticeBar("The Mouse Sensitivity you have set can cause Aimmy to be unstable to aim, please increase if you suffer from this problem").Show();
+                            LogManager.Log(LogManager.LogLevel.Warning, 
+                                "The Mouse Sensitivity you have set can cause Aimmy to be unstable to aim, please increase if you suffer from this problem", true);
                     };
                 })
                 .AddSlider("Mouse Jitter", "Jitter", 1, 1, 0, 15, s => uiManager.S_MouseJitter = s)
@@ -344,7 +345,7 @@ namespace Aimmy2.Controls
                         if (saveFileDialog.ShowDialog() == true)
                         {
                             SaveDictionary.WriteJSON(Dictionary.AntiRecoilSettings, saveFileDialog.FileName);
-                            new NoticeBar($"[Anti Recoil] Config has been saved to \"{saveFileDialog.FileName}\"", 2000).Show();
+                            LogManager.Log(LogManager.LogLevel.Info, $"[Anti Recoil] Config has been saved to \"{saveFileDialog.FileName}\"", true);
                         }
                     };
                 })

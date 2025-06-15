@@ -13,6 +13,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using Visuality;
+using LogLevel = Other.LogManager.LogLevel;
 
 namespace Aimmy2.AILogic
 {
@@ -146,13 +147,22 @@ namespace Aimmy2.AILogic
         {
             lock (_benchmarkLock)
             {
-                Debug.WriteLine("=== AIManager Performance Benchmarks ===");
+                var lines = new List<string>
+                {
+                    "=== AIManager Performance Benchmarks ==="
+                };
+
                 foreach (var kvp in _benchmarks.OrderBy(x => x.Key))
                 {
                     var data = kvp.Value;
-                    Debug.WriteLine($"{kvp.Key}: Avg={data.AverageTime:F2}ms, Min={data.MinTime}ms, Max={data.MaxTime}ms, Count={data.CallCount}");
+                    lines.Add($"{kvp.Key}: Avg={data.AverageTime:F2}ms, Min={data.MinTime}ms, Max={data.MaxTime}ms, Count={data.CallCount}");
                 }
-                Debug.WriteLine($"Overall FPS: {(iterationCount > 0 ? 1000.0 / (totalTime / (double)iterationCount) : 0):F2}");
+
+                lines.Add($"Overall FPS: {(iterationCount > 0 ? 1000.0 / (totalTime / (double)iterationCount) : 0):F2}");
+                
+                //File.WriteAllLines("AIManager_Benchmarks.txt", lines);
+
+                LogManager.Log(LogManager.LogLevel.Info, string.Join(Environment.NewLine, lines));
             }
         }
 
@@ -160,9 +170,6 @@ namespace Aimmy2.AILogic
 
         public AIManager(string modelPath)
         {
-            // Subscribe to display changes FIRST
-            DisplayManager.DisplayChanged += OnDisplayChanged;
-
             // Initialize DXGI capture for current display
             if (Dictionary.dropdownState["Screen Capture Method"] == "DirectX")
             {
@@ -188,32 +195,6 @@ namespace Aimmy2.AILogic
             Task.Run(() => InitializeModel(sessionOptions, modelPath));
         }
 
-        private void OnDisplayChanged(object? sender, DisplayChangedEventArgs e)
-        {
-            lock (_captureManager._displayLock)
-            {
-                _captureManager._displayChangesPending = true;
-            }
-        }
-
-        private void HandlePendingDisplayChanges()
-        {
-            lock (_captureManager._displayLock)
-            {
-                if (!_captureManager._displayChangesPending) return;
-
-                try
-                {
-                    _captureManager.InitializeDxgiDuplication();
-                    _captureManager._displayChangesPending = false;
-                }
-                catch (Exception ex)
-                {
-                    // Will retry on next iteration
-                }
-            }
-        }
-
         #region Models
 
         private async Task InitializeModel(SessionOptions sessionOptions, string modelPath)
@@ -226,16 +207,15 @@ namespace Aimmy2.AILogic
                 }
                 catch (Exception ex)
                 {
-                    await Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                        new NoticeBar($"Error starting the model via DirectML: {ex.Message}\n\nFalling back to CPU, performance may be poor.", 5000).Show()));
+                    LogManager.Log(LogLevel.Error, $"Error starting the model via DirectML: {ex.Message}\n\nFalling back to CPU, performance may be poor.", true);
+
                     try
                     {
                         await LoadModelAsync(sessionOptions, modelPath, useDirectML: false);
                     }
                     catch (Exception e)
                     {
-                        await Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                            new NoticeBar($"Error starting the model via CPU: {e.Message}, you won't be able to aim assist at all.", 5000).Show()));
+                        LogManager.Log(LogLevel.Error, $"Error starting the model via CPU: {e.Message}, you won't be able to aim assist at all.", true);
                     }
                 }
 
@@ -261,8 +241,7 @@ namespace Aimmy2.AILogic
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    new NoticeBar($"Error starting the model: {ex.Message}", 5000).Show()));
+                LogManager.Log(LogLevel.Error, $"Error loading the model: {ex.Message}", true);
                 _onnxModel?.Dispose();
             }
 
@@ -284,12 +263,10 @@ namespace Aimmy2.AILogic
                 var outputMetadata = _onnxModel.OutputMetadata;
                 if (!outputMetadata.Values.All(metadata => metadata.Dimensions.SequenceEqual(expectedShape)))
                 {
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    new NoticeBar(
-                        $"Output shape does not match the expected shape of {string.Join("x", expectedShape)}.\n\nThis model will not work with Aimmy, please use an YOLOv8 model converted to ONNXv8."
-                        , 15000)
-                    .Show()
-                    ));
+                    LogManager.Log(LogLevel.Error,
+                        $"Output shape does not match the expected shape of {string.Join("x", expectedShape)}.\nThis model will not work with Aimmy, please use an YOLOv8 model converted to ONNXv8.",
+                        true, 10000);
+                    
                 }
             }
         }
@@ -321,7 +298,7 @@ namespace Aimmy2.AILogic
                 stopwatch.Restart();
 
                 // Handle any pending display changes
-                HandlePendingDisplayChanges();
+                _captureManager.HandlePendingDisplayChanges();
 
                 using (Benchmark("AILoopIteration"))
                 {
@@ -940,9 +917,6 @@ namespace Aimmy2.AILogic
 
         public void Dispose()
         {
-            // Unsubscribe from display changes
-            DisplayManager.DisplayChanged -= OnDisplayChanged;
-
             // Stop the loop
             _isAiLoopRunning = false;
             if (_aiLoopThread != null && _aiLoopThread.IsAlive)
@@ -959,6 +933,7 @@ namespace Aimmy2.AILogic
 
             // Dispose DXGI objects
             _captureManager.DisposeDxgiResources();
+            _captureManager.Dispose();
 
             // Clean up other resources
             _reusableInputArray = null;

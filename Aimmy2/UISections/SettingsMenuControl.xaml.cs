@@ -1,14 +1,14 @@
 ﻿using Aimmy2.Class;
 using Aimmy2.MouseMovementLibraries.GHubSupport;
 using Aimmy2.UILibrary;
-using Class;
 using MouseMovementLibraries.ddxoftSupport;
 using MouseMovementLibraries.RazerSupport;
+using Other;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using UILibrary;
 using Visuality;
+using LogLevel = Other.LogManager.LogLevel;
 
 namespace Aimmy2.Controls
 {
@@ -186,13 +186,14 @@ namespace Aimmy2.Controls
                     {
                         var value = s.Slider.Value;
                         if (value >= 95)
-                            new NoticeBar("The minimum confidence you have set for Aimmy to be too high and may be unable to detect players.").Show();
+                            LogManager.Log(LogLevel.Warning, "The minimum confidence you have set for Aimmy to be too high and may be unable to detect players.", true);
                         else if (value <= 35)
-                            new NoticeBar("The minimum confidence you have set for Aimmy may be too low can cause false positives.").Show();
+                            LogManager.Log(LogLevel.Warning, "The minimum confidence you have set for Aimmy may be too low can cause false positives.", true);
                     };
                 })
                 .AddToggle("Mouse Background Effect", t => uiManager.T_MouseBackgroundEffect = t)
                 .AddToggle("UI TopMost", t => uiManager.T_UITopMost = t)
+                .AddToggle("Debug Mode", t => uiManager.T_DebugMode = t)
                 .AddButton("Save Config", b =>
                 {
                     uiManager.B_SaveConfig = b;
@@ -248,11 +249,11 @@ namespace Aimmy2.Controls
                 {
                     DisplayManager.RefreshDisplays();
                     uiManager.DisplaySelector.RefreshDisplays();
-                    new NoticeBar("Display list refreshed successfully").Show();
+                    LogManager.Log(LogLevel.Info, "Display list refreshed successfully.", true);
                 }
                 catch (Exception ex)
                 {
-                    new NoticeBar($"Error refreshing displays: {ex.Message}").Show();
+                    LogManager.Log(LogLevel.Error, $"Error refreshing displays: {ex.Message}", true);
                 }
             };
             DisplaySelectMenu.Children.Insert(insertIndex + 1, refreshButton);
@@ -290,7 +291,7 @@ namespace Aimmy2.Controls
             {
                 try
                 {
-                    new NoticeBar($"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})").Show();
+                    LogManager.Log(LogLevel.Info, $"AI focus switched to Display {e.DisplayIndex + 1} ({e.Bounds.Width}x{e.Bounds.Height})", true);
                     UpdateDisplayRelatedSettings(e);
                 }
                 catch (Exception ex)

@@ -8,7 +8,6 @@ using AimmyWPF.Class;
 using Class;
 using InputLogic;
 using Other;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -761,8 +760,7 @@ namespace Aimmy2
                 if (toggles[i] != null)
                     UpdateToggleUI(toggles[i], false);
             }
-
-            new NoticeBar("[Emergency Stop Keybind] Disabled all AI features.", 4000).Show();
+            LogManager.Log(LogManager.LogLevel.Info, "[Emergency Stop Keybind] Disabled all AI features.", true);
         }
 
         private void HandleAntiRecoil(bool start)
@@ -787,7 +785,8 @@ namespace Aimmy2
 
             Dictionary.toggleState["Anti Recoil"] = false;
             UpdateToggleUI(uiManager.T_AntiRecoil!, false);
-            new NoticeBar("[Disable Anti Recoil Keybind] Disabled Anti-Recoil.", 4000).Show();
+
+            LogManager.Log(LogManager.LogLevel.Info, "[Disable Anti Recoil Keybind] Disabled Anti-Recoil.", true);
         }
 
         private void LoadGunConfig(string configKey)
@@ -894,7 +893,7 @@ namespace Aimmy2
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"No mapping found for '{stringValue}'");
+                        LogManager.Log(LogManager.LogLevel.Warning, $"No mapping found for '{stringValue}' in '{key}' dropdown.");
                     }
                 }
             }
@@ -970,11 +969,7 @@ namespace Aimmy2
                     // Only show notification if not during startup
                     if (loading_outside_startup)
                     {
-                        // Use dispatcher to ensure UI operations happen on UI thread
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            new NoticeBar("[Anti Recoil] Created default config.", 2000).Show();
-                        });
+                        LogManager.Log(LogManager.LogLevel.Info, "[Anti Recoil] Created default config.", true);
                     }
                     return;
                 }
@@ -989,10 +984,7 @@ namespace Aimmy2
                 // Only show notification if not during startup
                 if (loading_outside_startup)
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        new NoticeBar($"[Anti Recoil] Loaded \"{path}\"", 2000).Show();
-                    });
+                    LogManager.Log(LogManager.LogLevel.Info, $"[Anti Recoil] Loaded \"{path}\"", true);
                 }
             }
             catch (Exception e)
@@ -1000,15 +992,7 @@ namespace Aimmy2
                 // Only show error if not during startup
                 if (loading_outside_startup)
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show($"Error loading config, possibly outdated\n{e}");
-                    });
-                }
-                else
-                {
-                    // During startup, just log the error
-                    System.Diagnostics.Debug.WriteLine($"Error loading anti-recoil config: {e.Message}");
+                    LogManager.Log(LogManager.LogLevel.Error, $"Error loading anti-recoil config: {e.Message}", true);
                 }
             }
         }

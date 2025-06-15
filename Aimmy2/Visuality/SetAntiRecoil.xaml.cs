@@ -3,6 +3,7 @@ using Aimmy2.Class;
 using Aimmy2.Theme;
 using AimmyWPF.Class;
 using InputLogic;
+using Other;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -112,7 +113,7 @@ namespace Visuality
 
             MainWin.WindowState = WindowState.Normal;
 
-            new NoticeBar("The Fire Rate is set successfully.", 5000).Show();
+            LogManager.Log(LogManager.LogLevel.Info, $"The Fire Rate is set to {ChangingFireRate}ms", true);
 
             Close();
         }

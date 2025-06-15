@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using Aimmy2.Class;
 using Aimmy2.UILibrary;
 using Other;
-using Visuality;
 
 namespace Aimmy2.Controls
 {
@@ -122,7 +116,7 @@ namespace Aimmy2.Controls
             {
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    new NoticeBar($"Failed to load store: {e.Message}", 10000).Show();
+                    LogManager.Log(LogManager.LogLevel.Error, $"Failed to load store: {e.Message}", true);
 
                     // Show error in UI
                     ModelStoreScroller.Children.Clear();
@@ -178,12 +172,12 @@ namespace Aimmy2.Controls
                     }
                     else
                     {
-                        new NoticeBar($"Directory not found: {path}", 5000).Show();
+                        LogManager.Log(LogManager.LogLevel.Error, $"Directory not found: {path}", true);
                     }
                 }
                 catch (Exception ex)
                 {
-                    new NoticeBar($"Failed to open folder: {ex.Message}", 5000).Show();
+                    LogManager.Log(LogManager.LogLevel.Error, $"Failed to open folder: {ex.Message}", true);
                 }
             }
         }

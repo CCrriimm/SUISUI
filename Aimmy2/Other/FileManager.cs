@@ -5,8 +5,6 @@ using Class;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using Visuality;
-using static Aimmy2.Other.GithubManager;
 
 namespace Other
 {
@@ -116,7 +114,7 @@ namespace Other
 
             string content = "Loaded Model: " + selectedModel;
             SelectedModelNotifier.Content = content;
-            new NoticeBar(content, 2000).Show();
+            LogManager.Log(LogManager.LogLevel.Info, content, true, 2000);
         }
 
         private void ConfigListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
