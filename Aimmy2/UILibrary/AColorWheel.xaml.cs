@@ -1,4 +1,6 @@
 ﻿using Aimmy2.Theme;
+using Newtonsoft.Json.Linq;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -181,6 +183,9 @@ namespace Aimmy2.UILibrary
 
         private void BrightnessSlider_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         {
+            // Change BrightnessValue Text
+            BrightnessValue.Text = (BrightnessSlider.Value * 100).ToString();
+
             // Save the color when brightness slider is released
             SaveThemeColor(_previewColor);
         }
@@ -210,6 +215,9 @@ namespace Aimmy2.UILibrary
 
                 // End with the full brightness color
                 BrightnessGradientEnd.Color = HsvToRgb(_currentHue, _currentSaturation, 1.0);
+
+                // Change Brightness Value Text
+                BrightnessValue.Text = (BrightnessSlider.Value * 100).ToString();
             }
         }
 
@@ -368,6 +376,28 @@ namespace Aimmy2.UILibrary
                 SaveThemeColor((Color)ColorConverter.ConvertFromString(HexValue.Text));
                 UpdateColorPreview((Color)ColorConverter.ConvertFromString(HexValue.Text));
                 PositionSelectorForColor((Color)ColorConverter.ConvertFromString(HexValue.Text));
+            }
+        }
+
+        #endregion
+
+        #region Brightness Changer through TextBox
+
+        private void BrightnessValue_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Reference: https://stackoverflow.com/questions/463299/how-do-i-make-a-textbox-that-only-accepts-numbers
+            if (System.Text.RegularExpressions.Regex.IsMatch(BrightnessValue.Text, "[^0-9]") || (BrightnessValue.Text.Length > 2 && BrightnessValue.Text != "100"))
+                BrightnessValue.Text = BrightnessValue.Text.Remove(BrightnessValue.Text.Length - 1);
+            if (BrightnessValue.Text.Length < 1)
+                BrightnessValue.Text = "0";
+        }
+
+        private void BrightnessValue_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Return)
+            {
+                BrightnessSlider.Value = (double)Convert.ToInt32(BrightnessValue.Text) / 100;
+                e.Handled = true;
             }
         }
 

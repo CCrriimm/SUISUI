@@ -126,7 +126,7 @@
                                    HorizontalAlignment="Left"/>
 
                             <!-- Slider with consistent margins like ASlider -->
-                            <Grid Margin="75,0,35,0">
+                            <Grid Margin="75,0,53,0">
                                 <!-- Gradient background track -->
                                 <Border Height="4" 
                                         CornerRadius="2"
@@ -182,6 +182,25 @@
                                     </Slider.Style>
                                 </Slider>
                             </Grid>
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,0,10,0"
+                                >
+                                <TextBox x:Name="BrightnessValue" 
+                                Text="100"
+                                Foreground="#BBFFFFFF"
+                                FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                FontSize="11"
+                                         BorderBrush="{x:Null}" TextChanged="BrightnessValue_TextChanged" KeyDown="BrightnessValue_KeyDown"/>
+                                <Label Content="%"
+                                   Foreground="#BBFFFFFF"
+                                   FontFamily="{StaticResource Atkinson Hyperlegible}"
+                                   FontSize="11"
+                                       Padding="-1"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left"/>
+
+                            </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>
@@ -236,7 +255,7 @@
                                        FontFamily="Consolas"
                                        FontSize="13"
                                        FontWeight="SemiBold"
-                                       Padding="0" TextChanged="HexValue_TextChanged"/>
+                                       Padding="0" TextChanged="HexValue_TextChanged" BorderBrush="{x:Null}"/>
                             </StackPanel>
                         </Border>
                     </Grid>
