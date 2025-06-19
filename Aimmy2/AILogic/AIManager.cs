@@ -12,6 +12,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using Visuality;
 using LogLevel = Other.LogManager.LogLevel;
 
@@ -59,8 +60,8 @@ namespace Aimmy2.AILogic
         private Prediction _currentTarget = null;
         private int _consecutiveFramesWithoutTarget = 0;
         private const int MAX_FRAMES_WITHOUT_TARGET = 3; // Allow 3 frames of target loss
-        //private const float TARGET_MATCH_THRESHOLD = 50f; (now is a slider, Dictionary.sliderSettings["Sticky Aim Threshold"])
-        
+                                                         //private const float TARGET_MATCH_THRESHOLD = 50f; (now is a slider, Dictionary.sliderSettings["Sticky Aim Threshold"])
+
         private double CenterXTranslated = 0;
         private double CenterYTranslated = 0;
 
@@ -713,10 +714,12 @@ namespace Aimmy2.AILogic
             Rectangle detectionBox = new(targetX - IMAGE_SIZE / 2, targetY - IMAGE_SIZE / 2, IMAGE_SIZE, IMAGE_SIZE); // Detection box always 640x640
 
             Bitmap? frame;
+
             using (Benchmark("ScreenGrab"))
             {
                 frame = _captureManager.ScreenGrab(detectionBox);
             }
+
             if (frame == null) return null;
 
             float[] inputArray;
@@ -781,85 +784,62 @@ namespace Aimmy2.AILogic
                 nearest = tree.NearestNeighbors(new double[] { IMAGE_SIZE / 2.0, IMAGE_SIZE / 2.0 }, 1);
             }
 
-            foreach (var prediction in KDPredictions)
-            {
-                prediction.ScreenCenterX = prediction.Rectangle.X + detectionBox.Left + prediction.Rectangle.Width / 2;
-                prediction.ScreenCenterY = prediction.Rectangle.Y + detectionBox.Top + prediction.Rectangle.Height / 2;
-            }
-
             Prediction? bestCandidate = (nearest.Length > 0) ? nearest[0].Item2 : null;
 
-            Prediction finalTarget = null;
-            
-            bool stickyAimEnabled = Dictionary.toggleState["Sticky Aim"];
-
-            if (stickyAimEnabled)
+            Prediction? finalTarget = HandleStickyAim(bestCandidate, KDPredictions);
+            if(finalTarget != null)
             {
-                if (_currentTarget != null)
-                {
-                    Prediction matchedTarget = null;
-                    float minDistance = float.MaxValue;
-                    float threshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
-
-                    foreach (var candidate in KDPredictions)
-                    {
-                        float distance = Distance(_currentTarget, candidate);
-                        if (distance < minDistance && distance < threshold)
-                        {
-                            minDistance = distance;
-                            matchedTarget = candidate;
-                        }
-                    }
-
-                    if (matchedTarget != null)
-                    {
-                        finalTarget = matchedTarget;
-                        _consecutiveFramesWithoutTarget = 0;
-                    }
-                    else
-                    {
-                        _consecutiveFramesWithoutTarget++;
-
-                        // Reset if target is lost for too long
-                        if (_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
-                        {
-                            _currentTarget = null;
-                            finalTarget = bestCandidate;
-                        }
-                    }
-                }
-                else
-                {
-                    finalTarget = bestCandidate;
-                }
-            }
-            else
-            {
-                finalTarget = bestCandidate;
-                _currentTarget = null; // Reset current target when sticky aim is disabled
-            }
-
-            if (finalTarget != null)
-            {
-                if(stickyAimEnabled) _currentTarget = finalTarget;
-
-                // Update detection box and save frame
-                float translatedXMin = finalTarget.Rectangle.X + detectionBox.Left;
-                float translatedYMin = finalTarget.Rectangle.Y + detectionBox.Top;
-                LastDetectionBox = new RectangleF(translatedXMin, translatedYMin,
-                    finalTarget.Rectangle.Width, finalTarget.Rectangle.Height);
-
-                CenterXTranslated = finalTarget.CenterXTranslated;
-                CenterYTranslated = finalTarget.CenterYTranslated;
-
-                using (Benchmark("SaveFrame"))
-                    SaveFrame(frame, finalTarget);
+                UpdateDetectionBox(finalTarget, detectionBox);
+                SaveFrame(frame, finalTarget);
                 return finalTarget;
             }
 
             return null;
         }
+        private Prediction? HandleStickyAim(Prediction? bestCandidate, List<Prediction> KDPredictions)
+        {
+            bool stickyAimEnabled = Dictionary.toggleState["Sticky Aim"];
+            if (!stickyAimEnabled) return bestCandidate;
+            if (_currentTarget != null)
+            {
+                Prediction? matchedTarget = null;
+                float minSqrDistance = float.MaxValue;
+                float thresholdSqr = (float)Math.Pow(Dictionary.sliderSettings["Sticky Aim Threshold"], 2);
 
+                foreach (var candidate in KDPredictions)
+                {
+                    float sqrDistance = Distance(_currentTarget, candidate);
+                    if (sqrDistance < minSqrDistance && sqrDistance < thresholdSqr)
+                    {
+                        minSqrDistance = sqrDistance;
+                        matchedTarget = candidate;
+                    }
+                }
+
+                if (matchedTarget != null)
+                {
+                    _consecutiveFramesWithoutTarget = 0;
+                    return matchedTarget;
+                }
+
+                if (++_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
+                {
+                    _currentTarget = null;
+                }
+            }
+            return bestCandidate;
+        }
+
+        private void UpdateDetectionBox(Prediction target, Rectangle detectionBox)
+        {
+            float translatedXMin = target.Rectangle.X + detectionBox.Left;
+            float translatedYMin = target.Rectangle.Y + detectionBox.Top;
+            LastDetectionBox = new(translatedXMin, translatedYMin,
+                target.Rectangle.Width, target.Rectangle.Height);
+
+            CenterXTranslated = target.CenterXTranslated;
+            CenterYTranslated = target.CenterYTranslated;
+        }
         private (List<double[]>, List<Prediction>) PrepareKDTreeData(Tensor<float> outputTensor, Rectangle detectionBox,
             float fovMinX, float fovMaxX, float fovMinY, float fovMaxY)
         {
