@@ -1,9 +1,10 @@
-﻿using System.Windows;
+﻿using Aimmy2.Theme;
+using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Aimmy2.Theme;
 
 namespace Aimmy2.UILibrary
 {
@@ -17,6 +18,7 @@ namespace Aimmy2.UILibrary
         private double _currentHue = 0;
         private double _currentSaturation = 0;
         private bool _isUpdatingFromCode = false;
+        private bool _isTextBoxLoadedAlready = false;
 
         public AColorWheel()
         {
@@ -39,6 +41,9 @@ namespace Aimmy2.UILibrary
 
             // Update brightness gradient
             UpdateBrightnessGradient();
+
+            // Allow TextBox to load Hex Values
+            _isTextBoxLoadedAlready = true;
         }
 
         private void CreateColorWheel()
@@ -191,7 +196,7 @@ namespace Aimmy2.UILibrary
             // Update hex value
             if (HexValue != null)
             {
-                HexValue.Content = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+                HexValue.Text = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
             }
         }
 
@@ -343,6 +348,27 @@ namespace Aimmy2.UILibrary
 
             if (hue < 0)
                 hue += 360;
+        }
+
+        #endregion
+
+        #region Hex Changer through TextBox
+
+        bool isValidHex(string Hex)
+        {
+            // Reference: https://www.w3resource.com/csharp-exercises/re/csharp-re-exercise-1.php
+            return Regex.IsMatch(Hex, @"[#][0-9A-Fa-f]{6}\b");
+        }
+
+        private void HexValue_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Reference: https://stackoverflow.com/questions/2109756/how-do-i-get-the-color-from-a-hexadecimal-color-code-using-net
+            if (isValidHex(HexValue.Text) && _isTextBoxLoadedAlready == true)
+            {
+                SaveThemeColor((Color)ColorConverter.ConvertFromString(HexValue.Text));
+                UpdateColorPreview((Color)ColorConverter.ConvertFromString(HexValue.Text));
+                PositionSelectorForColor((Color)ColorConverter.ConvertFromString(HexValue.Text));
+            }
         }
 
         #endregion
