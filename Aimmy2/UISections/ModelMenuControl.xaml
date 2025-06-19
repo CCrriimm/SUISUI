@@ -152,7 +152,8 @@
                                         FontFamily="{StaticResource Atkinson Hyperlegible}"
                                         Padding="5"
                                         Foreground="White"
-                                        TextChanged="SearchBox_TextChanged">
+                                        TextChanged="SearchBox_TextChanged"
+                                        CaretBrush="White">
                                     </TextBox>
                                 </Border>
                                 <StackPanel x:Name="ModelStoreScroller" />
@@ -193,7 +194,8 @@
                                         FontFamily="{StaticResource Atkinson Hyperlegible}"
                                         Padding="5"
                                         Foreground="White"
-                                        TextChanged="CSearchBox_TextChanged">
+                                        TextChanged="CSearchBox_TextChanged"
+                                        CaretBrush="White">
                                     </TextBox>
                                 </Border>
                                 <StackPanel x:Name="ConfigStoreScroller" />
