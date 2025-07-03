@@ -58,7 +58,7 @@ namespace Aimmy2
         #endregion
 
         #region UI State
-
+        public SettingsMenuControl? SettingsMenuControlInstance { get; set; }
         internal Dictionary<string, AToggle> toggleInstances = new();
         private readonly Dictionary<string, UserControl?> _menuControls = new();
         private readonly Dictionary<string, bool> _menuInitialized = new();
@@ -507,6 +507,7 @@ namespace Aimmy2
                     case SettingsMenuControl settingsMenu:
                         settingsMenu.Initialize(this);
                         LoadDropdownStates();
+                        SettingsMenuControlInstance = settingsMenu;
                         break;
 
                     case AboutMenuControl aboutMenu:

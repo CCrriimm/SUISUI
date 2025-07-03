@@ -18,7 +18,6 @@ namespace AILogic
         private bool _directXFailedPermanently = false; // Track if DirectX failed with unsupported error
         private bool _notificationShown = false; // Prevent spam notifications
 
-        private const int IMAGE_SIZE = 640;
         // Capturing
         public Bitmap? screenCaptureBitmap { get; private set; }
         private ID3D11Device? _dxDevice;
@@ -356,7 +355,7 @@ namespace AILogic
                     var map = _dxDevice.ImmediateContext.Map(_stagingTex, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
                     var boundsRect = new Rectangle(0, 0, w, h);
                     BitmapData? mapDest = currentBitmap.LockBits(boundsRect, ImageLockMode.WriteOnly, currentBitmap.PixelFormat);
-                    
+
                     try
                     {
                         unsafe
