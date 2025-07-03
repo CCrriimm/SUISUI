@@ -98,7 +98,8 @@ namespace Aimmy2.Class
             { "Aiming Boundaries Alignment", "Center" },
             { "Mouse Movement Method", "Mouse Event" },
             { "Screen Capture Method", "DirectX" },
-            { "Tracer Position", "Bottom" }
+            { "Tracer Position", "Bottom" },
+            { "Image Size", "640" }
 
         };
 
