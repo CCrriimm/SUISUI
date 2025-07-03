@@ -773,6 +773,7 @@ namespace Aimmy2.AILogic
 
             if (KDpoints.Count == 0 || KDPredictions.Count == 0)
             {
+                SaveFrame(frame);
                 return null;
             }
 
