@@ -1,13 +1,13 @@
-﻿using System.IO;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using Aimmy2.Class;
+﻿using Aimmy2.Class;
 using Aimmy2.UILibrary;
 using Class;
 using InputLogic;
 using Microsoft.Win32;
 using Other;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using UILibrary;
 using Visuality;
 
@@ -213,6 +213,17 @@ namespace Aimmy2.Controls
                     _mainWindow.AddDropdownItem(d, "Shall0e's Prediction");
                     _mainWindow.AddDropdownItem(d, "wisethef0x's EMA Prediction");
                 })
+
+                .AddDropdown("Movement Path", d =>
+                {
+                    d.DropdownBox.SelectedIndex = 0;
+                    uiManager.D_MovementPath = d;
+                    _mainWindow.AddDropdownItem(d, "Cubic Bezier");
+                    _mainWindow.AddDropdownItem(d, "Exponential");
+                    _mainWindow.AddDropdownItem(d, "Linear");
+                    _mainWindow.AddDropdownItem(d, "Adaptive");
+                    _mainWindow.AddDropdownItem(d, "Perlin Noise");
+                })
                 .AddDropdown("Detection Area Type", d =>
                 {
                     d.DropdownBox.SelectedIndex = -1;
@@ -253,10 +264,10 @@ namespace Aimmy2.Controls
                     {
                         var value = s.Slider.Value;
                         if (value >= 0.98)
-                            LogManager.Log(LogManager.LogLevel.Warning, 
+                            LogManager.Log(LogManager.LogLevel.Warning,
                                 "The Mouse Sensitivity you have set can cause Aimmy to be unable to aim, please decrease if you suffer from this problem", true);
                         else if (value <= 0.1)
-                            LogManager.Log(LogManager.LogLevel.Warning, 
+                            LogManager.Log(LogManager.LogLevel.Warning,
                                 "The Mouse Sensitivity you have set can cause Aimmy to be unstable to aim, please increase if you suffer from this problem", true);
                     };
                 })
@@ -265,7 +276,7 @@ namespace Aimmy2.Controls
                 {
                     uiManager.S_StickyAimThreshold = s;
                     var value = s.Slider.Value;
-                    if(value <= 10)
+                    if (value <= 10)
                     {
                         LogManager.Log(LogManager.LogLevel.Warning,
                             "The threshold you have set may cause sticky aim to not work as intended, please increase if you suffer from this issue.\nINFO: The Sticky aim threshold is how many pixels it will take until it realizes the target is gone and moves on to another target",

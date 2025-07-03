@@ -98,8 +98,8 @@ namespace Aimmy2.Class
             { "Aiming Boundaries Alignment", "Center" },
             { "Mouse Movement Method", "Mouse Event" },
             { "Screen Capture Method", "DirectX" },
-            { "Tracer Position", "Bottom" }
-
+            { "Tracer Position", "Bottom" },
+            { "Movement Path", "Cubic Bezier" }
         };
 
         public static Dictionary<string, dynamic> colorState = new()
