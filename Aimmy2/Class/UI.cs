@@ -24,7 +24,7 @@ namespace Class
         public ATitle? AT_AimConfig { get; set; }
 
         public ADropdown? D_PredictionMethod { get; set; }
-
+        public ADropdown? D_MovementPath { get; set; }
         public ADropdown? D_DetectionAreaType { get; set; }
         public ComboBoxItem? DDI_ClosestToCenterScreen { get; set; }
         public ADropdown? D_AimingBoundariesAlignment { get; set; }

@@ -99,8 +99,8 @@ namespace Aimmy2.Class
             { "Mouse Movement Method", "Mouse Event" },
             { "Screen Capture Method", "DirectX" },
             { "Tracer Position", "Bottom" },
+            { "Movement Path", "Cubic Bezier" },
             { "Image Size", "640" }
-
         };
 
         public static Dictionary<string, dynamic> colorState = new()
