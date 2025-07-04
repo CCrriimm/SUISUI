@@ -75,7 +75,9 @@ namespace Class
 
         // FOV
         public ATitle? AT_FOV { get; set; }
-
+        //--
+        public ADropdown D_FOVSTYLE { get; set; }
+        //--
         public AToggle? T_FOV { get; set; }
 
         public AToggle? T_DynamicFOV { get; set; }
@@ -114,6 +116,9 @@ namespace Class
         public AToggle? T_UITopMost { get; set; }
         public APButton? B_SaveConfig { get; set; }
         public APButton? B_Debug { get; set; }
+        //--
+        public AToggle? T_StreamGuard { get; set; }
+        //--
 
         // X/Y Percentage Adjustment Enabler
         public ATitle? AT_XYPercentageAdjustmentEnabler { get; set; }

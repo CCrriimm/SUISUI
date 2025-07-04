@@ -15,6 +15,10 @@ namespace Aimmy2.Controls
 {
     public partial class AimMenuControl : UserControl
     {
+        //--
+        UISections.ColorPicker colorPickerInstance = null;
+        UISections.ColorPicker fovColorPickerInstance = null;
+        //--
         private MainWindow? _mainWindow;
         private bool _isInitialized;
 
@@ -405,10 +409,56 @@ namespace Aimmy2.Controls
                 .AddToggle("FOV", t => uiManager.T_FOV = t)
                 .AddToggle("Dynamic FOV", t => uiManager.T_DynamicFOV = t)
                 .AddKeyChanger("Dynamic FOV Keybind", k => uiManager.C_DynamicFOV = k)
+                .AddDropdown("FOV Style", d =>
+                {
+                    uiManager.D_FOVSTYLE = d;
+
+                    var circleItem = _mainWindow.AddDropdownItem(d, "Circle");
+                    var rectangleItem = _mainWindow.AddDropdownItem(d, "Rectangle");
+
+                    circleItem.Selected += (s, e) =>
+                    {
+                        MainWindow.FOVWindow.Circle.Visibility = Visibility.Visible;
+                        MainWindow.FOVWindow.RectangleShape.Visibility = Visibility.Collapsed;
+                    };
+
+                    rectangleItem.Selected += (s, e) =>
+                    {
+                        MainWindow.FOVWindow.Circle.Visibility = Visibility.Collapsed;
+                        MainWindow.FOVWindow.RectangleShape.Visibility = Visibility.Visible;
+                    };
+                })
                 .AddColorChanger("FOV Color", c =>
                 {
-                    uiManager.CC_FOVColor = c;
-                    c.Reader.Click += (s, e) => HandleColorChange(c, "FOV Color", PropertyChanger.PostColor);
+                    c.Reader.Click += (s, e) =>
+                    {
+                        if (fovColorPickerInstance != null && fovColorPickerInstance.IsVisible)
+                        {
+                            fovColorPickerInstance.Activate();
+                            return;
+                        }
+
+                        Color initialColor = Colors.White;
+                        if (c.Reader.Background is SolidColorBrush scb)
+                            initialColor = scb.Color;
+                        fovColorPickerInstance = new UISections.ColorPicker(initialColor, "FOV Color");
+
+                        fovColorPickerInstance.ColorChanged += (color) =>
+                        {
+                            if (uiManager?.CC_FOVColor?.Reader != null)
+                            {
+                                uiManager.CC_FOVColor.Reader.Background = new SolidColorBrush(color);
+                            }
+                            PropertyChanger.PostColor(color);
+                        };
+
+                        fovColorPickerInstance.Closed += (sender, args) =>
+                        {
+                            fovColorPickerInstance = null;
+                        };
+
+                        fovColorPickerInstance.Show();
+                    };
                 })
                 .AddSlider("FOV Size", "Size", 1, 1, 10, 640, s =>
                 {
@@ -475,8 +525,35 @@ namespace Aimmy2.Controls
             builder
                 .AddColorChanger("Detected Player Color", c =>
                 {
-                    uiManager.CC_DetectedPlayerColor = c;
-                    c.Reader.Click += (s, e) => HandleColorChange(c, "Detected Player Color", PropertyChanger.PostDPColor);
+                    c.Reader.Click += (s, e) =>
+                    {
+                        if (colorPickerInstance != null && colorPickerInstance.IsVisible)
+                        {
+                            colorPickerInstance.Activate();
+                            return;
+                        }
+
+                        Color initialColor = Colors.White;
+                        if (c.Reader.Background is SolidColorBrush scb)
+                            initialColor = scb.Color;
+                        colorPickerInstance = new UISections.ColorPicker(initialColor, "ESP Color");
+
+                        colorPickerInstance.ColorChanged += (color) =>
+                        {
+                            if (uiManager?.CC_DetectedPlayerColor?.Reader != null)
+                            {
+                                uiManager.CC_DetectedPlayerColor.Reader.Background = new SolidColorBrush(color);
+                            }
+                            PropertyChanger.PostDPColor(color);
+                        };
+
+                        colorPickerInstance.Closed += (sender, args) =>
+                        {
+                            colorPickerInstance = null;
+                        };
+
+                        colorPickerInstance.Show();
+                    };
                 })
                 .AddSlider("AI Confidence Font Size", "Size", 1, 1, 1, 30, s =>
                 {

@@ -12,6 +12,27 @@ namespace Aimmy2.UILibrary
 {
     public partial class AColorWheel : UserControl
     {
+        public static readonly DependencyProperty TitleProperty =
+        DependencyProperty.Register("Title", typeof(string), typeof(AColorWheel),
+            new PropertyMetadata("Theme Color", OnTitleChanged));
+
+        public string Title
+        {
+            get => (string)GetValue(TitleProperty);
+            set => SetValue(TitleProperty, value);
+        }
+
+        private static void OnTitleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is AColorWheel control && e.NewValue is string newTitle)
+            {
+                control.ColorWheelTitle.Content = newTitle;
+            }
+        }
+        //--
+        private Color _initialColor;
+        public bool SuppressThemeApply { get; set; } = false;
+        //--
         private bool _isMouseDown = false;
         private WriteableBitmap _colorWheelBitmap;
         private Color _selectedColor = Color.FromRgb(114, 46, 209); // Default purple
@@ -116,8 +137,11 @@ namespace Aimmy2.UILibrary
             _isMouseDown = false;
             ColorWheelCanvas.ReleaseMouseCapture();
 
-            // Save the color using ThemeManager
-            SaveThemeColor(_previewColor);
+            // Only save theme color if we're not suppressing theme changes
+            if (!SuppressThemeApply)
+            {
+                SaveThemeColor(_previewColor);
+            }
         }
 
         private void UpdateColorFromPosition(Point position)
@@ -186,8 +210,11 @@ namespace Aimmy2.UILibrary
             // Change BrightnessValue Text
             BrightnessValue.Text = (BrightnessSlider.Value * 100).ToString();
 
-            // Save the color when brightness slider is released
-            SaveThemeColor(_previewColor);
+            // Only save theme color if we're not suppressing theme changes
+            if (!SuppressThemeApply)
+            {
+                SaveThemeColor(_previewColor);
+            }
         }
 
         private void UpdateColorPreview(Color color)
@@ -226,8 +253,11 @@ namespace Aimmy2.UILibrary
             // Update selected color
             _selectedColor = color;
 
-            // Use ThemeManager to set and save the color
-            ThemeManager.SetThemeColor(color);
+            // Only set theme color if we're not suppressing theme changes
+            if (!SuppressThemeApply)
+            {
+                ThemeManager.SetThemeColor(color);
+            }
 
             // Save to settings (implement your settings save logic here)
             string hexColor = ThemeManager.GetThemeColorHex();
@@ -402,5 +432,20 @@ namespace Aimmy2.UILibrary
         }
 
         #endregion
+        //--
+        public Color GetCurrentPreviewColor()
+        {
+            if (ColorPreview.Fill is SolidColorBrush brush)
+            {
+                return brush.Color;
+            }
+            return Colors.Transparent;
+        }
+        public void SetInitialColor(Color color)
+        {
+            _initialColor = color;
+        }
+        //--
     }
+
 }
