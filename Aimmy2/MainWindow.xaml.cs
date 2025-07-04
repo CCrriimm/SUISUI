@@ -617,6 +617,10 @@ namespace Aimmy2
                 ["Show AI Confidence"] = () => DPWindow.DetectedPlayerConfidence.Visibility = GetToggleVisibility(title, true),
                 ["Mouse Background Effect"] = () => { if (!Dictionary.toggleState[title]) RotaryGradient.Angle = 0; },
                 ["UI TopMost"] = () => Topmost = Dictionary.toggleState[title],
+                ["StreamGuard"] = () =>
+                {
+                    StreamGuardHelper.ApplyStreamGuardToAllWindows(Dictionary.toggleState[title]);
+                },
                 ["EMA Smoothening"] = () =>
                 {
                     MouseManager.IsEMASmoothingEnabled = Dictionary.toggleState[title];
@@ -753,6 +757,23 @@ namespace Aimmy2
 
         private void ApplyDynamicFOV(bool apply)
         {
+            if (!Dictionary.toggleState["Dynamic FOV"])
+            {
+                FOVWindow.Circle.BeginAnimation(FrameworkElement.WidthProperty, null);
+                FOVWindow.Circle.BeginAnimation(FrameworkElement.HeightProperty, null);
+                FOVWindow.RectangleShape.BeginAnimation(FrameworkElement.WidthProperty, null);
+                FOVWindow.RectangleShape.BeginAnimation(FrameworkElement.HeightProperty, null);
+
+                FOVWindow.UpdateFOVSize(ActualFOV);
+                return;
+            }
+            var targetSize = apply ? Convert.ToDouble(Dictionary.sliderSettings["Dynamic FOV Size"]) : ActualFOV;
+            Dictionary.sliderSettings["FOV Size"] = targetSize;
+            AnimateFOVSize(targetSize);
+        }
+        /* Old
+        private void ApplyDynamicFOV(bool apply)
+        {
             if (!Dictionary.toggleState["Dynamic FOV"]) return;
 
             var targetSize = apply ? Convert.ToDouble(Dictionary.sliderSettings["Dynamic FOV Size"]) : ActualFOV;
@@ -760,14 +781,23 @@ namespace Aimmy2
 
             AnimateFOVSize(targetSize);
         }
-
+        */
+        private void AnimateFOVSize(double targetSize)
+        {
+            var duration = TimeSpan.FromMilliseconds(500);
+            Animator.WidthShift(duration, FOVWindow.Circle, FOVWindow.Circle.ActualWidth, targetSize);
+            Animator.HeightShift(duration, FOVWindow.Circle, FOVWindow.Circle.ActualHeight, targetSize);
+            Animator.WidthShift(duration, FOVWindow.RectangleShape, FOVWindow.RectangleShape.ActualWidth, targetSize);
+            Animator.HeightShift(duration, FOVWindow.RectangleShape, FOVWindow.RectangleShape.ActualHeight, targetSize);
+        }
+        /* Old
         private void AnimateFOVSize(double targetSize)
         {
             var duration = TimeSpan.FromMilliseconds(500);
             Animator.WidthShift(duration, FOVWindow.Circle, FOVWindow.Circle.ActualWidth, targetSize);
             Animator.HeightShift(duration, FOVWindow.Circle, FOVWindow.Circle.ActualHeight, targetSize);
         }
-
+        */
         private void HandleEmergencyStop()
         {
             var features = new[] { "Aim Assist", "Constant AI Tracking", "Auto Trigger" };

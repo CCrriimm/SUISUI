@@ -72,6 +72,9 @@ namespace Aimmy2.Class
             { "Mouse Background Effect", true },
             { "Debug Mode", false },
             { "UI TopMost", false },
+            //--
+            { "StreamGuard", false },
+            //--
             { "X Axis Percentage Adjustment", false },
             { "Y Axis Percentage Adjustment", false }
         };

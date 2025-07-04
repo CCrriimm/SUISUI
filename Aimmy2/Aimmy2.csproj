@@ -104,6 +104,9 @@
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>Settings.settings</DependentUpon>
 	  </Compile>
+	  <Compile Update="StreamGuardHelper.cs">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Compile>
 	  <Compile Update="UILibrary\ACredit.xaml.cs">
 	    <SubType>Code</SubType>
 	  </Compile>

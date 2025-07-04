@@ -273,6 +273,7 @@ namespace Aimmy2.Controls
                 .AddToggle("Mouse Background Effect", t => uiManager.T_MouseBackgroundEffect = t)
                 .AddToggle("UI TopMost", t => uiManager.T_UITopMost = t)
                 .AddToggle("Debug Mode", t => uiManager.T_DebugMode = t)
+                .AddToggle("StreamGuard", t => uiManager.T_StreamGuard = t)
                 .AddButton("Save Config", b =>
                 {
                     uiManager.B_SaveConfig = b;
