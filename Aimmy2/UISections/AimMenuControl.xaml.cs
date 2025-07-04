@@ -61,6 +61,7 @@ namespace Aimmy2.Controls
             LoadMinimizeStatesFromGlobal();
 
             AIManager.ClassesUpdated += OnClassesChanged;
+            AIManager.ImageSizeUpdated += OnImageSizeChanged;
 
             // Load all sections
             LoadAimAssist();
@@ -637,6 +638,27 @@ namespace Aimmy2.Controls
             }
 
             dropdown.DropdownBox.SelectedIndex = 0;
+        }
+
+        private void OnImageSizeChanged(int imageSize)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (_mainWindow?.uiManager.S_FOVSize != null && _mainWindow?.uiManager.S_DynamicFOVSize != null)
+                {
+                    UpdateFovSizeSlider(_mainWindow.uiManager.S_FOVSize, imageSize);
+                    UpdateFovSizeSlider(_mainWindow.uiManager.S_DynamicFOVSize, imageSize);
+                }
+            });
+        }
+        private void UpdateFovSizeSlider(ASlider slider, int imageSize = 640)
+        {
+            if (slider.Slider == null) return;
+            if (imageSize < slider.Slider.Value)
+            {
+                slider.Slider.Value = imageSize;
+            }
+            slider.Slider.Maximum = imageSize;
         }
 
         private void HandleColorChange(AColorChanger colorChanger, string settingKey, Action<Color> updateAction)
