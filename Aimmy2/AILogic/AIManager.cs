@@ -44,6 +44,8 @@ namespace Aimmy2.AILogic
         {
             { 0, "enemy" }
         };
+        public Dictionary<int, string> ModelClasses => _modelClasses; // apparently this is better than making _modelClasses public
+        public static event Action<Dictionary<int, string>>? ClassesUpdated;
 
         private const int SAVE_FRAME_COOLDOWN_MS = 500;
 
@@ -344,6 +346,7 @@ namespace Aimmy2.AILogic
                 {
                     // For dynamic models, calculate NUM_DETECTIONS based on selected image size
                     NUM_DETECTIONS = CalculateNumDetections(IMAGE_SIZE);
+                    LoadClasses();
                     LogManager.Log(LogLevel.Info, $"Loaded dynamic model - using selected image size {IMAGE_SIZE}x{IMAGE_SIZE} with {NUM_DETECTIONS} detections", true, 3000);
                 }
                 else
@@ -433,7 +436,7 @@ namespace Aimmy2.AILogic
                             }
                         }
                         NUM_CLASSES = _modelClasses.Count > 0 ? _modelClasses.Keys.Max() + 1 : 1;
-                        LogManager.Log(LogLevel.Info, $"Loaded {_modelClasses.Count} classes from model metadata: {data.ToString(Newtonsoft.Json.Formatting.None)}", false);
+                        LogManager.Log(LogLevel.Info, $"Loaded {_modelClasses.Count} class(es) from model metadata: {data.ToString(Newtonsoft.Json.Formatting.None)}", false);
                     }
                     else
                     {
@@ -444,6 +447,7 @@ namespace Aimmy2.AILogic
                 {
                     LogManager.Log(LogLevel.Error, "Model metadata does not contain 'names' field for classes.", true);
                 }
+                ClassesUpdated?.Invoke(new Dictionary<int, string>(_modelClasses));
             }
             catch (Exception ex)
             {
@@ -1028,6 +1032,8 @@ namespace Aimmy2.AILogic
             float fovMinX, float fovMaxX, float fovMinY, float fovMaxY)
         {
             float minConfidence = (float)Dictionary.sliderSettings["AI Minimum Confidence"] / 100.0f;
+            string selectedClass = Dictionary.dropdownState["Target Class"];
+            int selectedClassId = selectedClass == "Best Confidence" ? -1 : _modelClasses.FirstOrDefault(c => c.Value == selectedClass).Key;
 
             var KDpoints = new List<double[]>(100); // Pre-allocate with estimated capacity
             var KDpredictions = new List<Prediction>(100);
@@ -1048,16 +1054,26 @@ namespace Aimmy2.AILogic
                 }
                 else
                 {
-                    for (int classId = 0; classId < NUM_CLASSES; classId++)
+                    if (selectedClassId == -1)
                     {
-                        float classConfidence = outputTensor[0, 4 + classId, i];
-                        if (classConfidence > bestConfidence)
+                        for (int classId = 0; classId < NUM_CLASSES; classId++)
                         {
-                            bestConfidence = classConfidence;
-                            bestClassId = classId;
+                            float classConfidence = outputTensor[0, 4 + classId, i];
+                            if (classConfidence > bestConfidence)
+                            {
+                                bestConfidence = classConfidence;
+                                bestClassId = classId;
+                            }
                         }
                     }
+                    else
+                    {
+                        bestConfidence = outputTensor[0, 4 + selectedClassId, i];
+                        bestClassId = selectedClassId;
+                    }
                 }
+
+                if (bestConfidence < minConfidence) continue;
 
                 float x_min = x_center - width / 2;
                 float y_min = y_center - height / 2;

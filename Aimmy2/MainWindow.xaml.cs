@@ -1057,6 +1057,11 @@ namespace Aimmy2
                     ["Bottom"] = 0,
                     ["Middle"] = 1,
                     ["Top"] = 2,
+                }),
+
+                ("Target Class", uiManager.D_TargetClass, new Dictionary<string, int>
+                {
+                    ["Best Confidence"] = 0,
                 })
             };
 
