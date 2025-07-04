@@ -46,7 +46,6 @@
                         <Border Background="#3F3C3C3C"
                                 BorderBrush="#3FFFFFFF"
                                 BorderThickness="1"
-                                CornerRadius="5,5,0,0"
                                 Margin="0,55,0,54">
                             <ListBox x:Name="ModelListBox"
                                      AllowDrop="True"
@@ -126,7 +125,6 @@
                         <Border Background="#3F3C3C3C"
                                 BorderBrush="#3FFFFFFF"
                                 BorderThickness="1"
-                                CornerRadius="5,5,0,0"
                                 Margin="0,55,0,54">
                             <ListBox x:Name="ConfigsListBox"
                                      AllowDrop="True"
