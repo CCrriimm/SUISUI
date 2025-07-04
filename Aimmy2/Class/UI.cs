@@ -28,6 +28,7 @@ namespace Class
         public ADropdown? D_DetectionAreaType { get; set; }
         public ComboBoxItem? DDI_ClosestToCenterScreen { get; set; }
         public ADropdown? D_AimingBoundariesAlignment { get; set; }
+        public ADropdown? D_TargetClass { get; set; }
         public ASlider? S_MouseSensitivity { get; set; }
         public ASlider? S_MouseJitter { get; set; }
         public ASlider? S_StickyAimThreshold { get; set; }

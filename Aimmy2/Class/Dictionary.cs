@@ -100,7 +100,8 @@ namespace Aimmy2.Class
             { "Screen Capture Method", "DirectX" },
             { "Tracer Position", "Bottom" },
             { "Movement Path", "Cubic Bezier" },
-            { "Image Size", "640" }
+            { "Image Size", "640" },
+            { "Target Class", "Best Confidence" }
         };
 
         public static Dictionary<string, dynamic> colorState = new()

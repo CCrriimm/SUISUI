@@ -1,4 +1,5 @@
-﻿using Aimmy2.Class;
+﻿using Aimmy2.AILogic;
+using Aimmy2.Class;
 using Aimmy2.UILibrary;
 using Class;
 using InputLogic;
@@ -54,6 +55,8 @@ namespace Aimmy2.Controls
 
             // Load minimize states from global dictionary if they exist
             LoadMinimizeStatesFromGlobal();
+
+            AIManager.ClassesUpdated += OnClassesChanged;
 
             // Load all sections
             LoadAimAssist();
@@ -247,6 +250,13 @@ namespace Aimmy2.Controls
                     _mainWindow.AddDropdownItem(d, "Center");
                     _mainWindow.AddDropdownItem(d, "Top");
                     _mainWindow.AddDropdownItem(d, "Bottom");
+                })
+                .AddDropdown("Target Class", d =>
+                {
+                    d.DropdownBox.SelectedIndex = 0;
+                    uiManager.D_TargetClass = d;
+                    _mainWindow.AddDropdownItem(d, "Best Confidence");
+                    UpdateTargetClassDropdown(d);
                 });
 
             // Add sliders with validation
@@ -504,6 +514,53 @@ namespace Aimmy2.Controls
         #endregion
 
         #region Helper Methods
+
+        private void OnClassesChanged(Dictionary<int, string> classes)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (_mainWindow?.uiManager.D_TargetClass != null)
+                {
+                    UpdateTargetClassDropdown(_mainWindow.uiManager.D_TargetClass, classes);
+                }
+            });
+        }
+
+        private void UpdateTargetClassDropdown(ADropdown dropdown, Dictionary<int, string>? _classes = null)
+        {
+            if (dropdown?.DropdownBox == null) return;
+            string? selection = (dropdown.DropdownBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+
+            var removedItems = dropdown.DropdownBox.Items.Cast<ComboBoxItem>()
+                .Where(item => item.Content?.ToString() != "Best Confidence")
+                .ToList();
+
+            foreach (var item in removedItems)
+            {
+                dropdown.DropdownBox.Items.Remove(item);
+            }
+
+            var classes = _classes ?? FileManager.AIManager?.ModelClasses ?? new Dictionary<int, string>();
+
+            foreach (var kvp in classes.OrderBy(x => x.Key))
+            {
+                _mainWindow!.AddDropdownItem(dropdown, kvp.Value);
+            }
+
+            if (!string.IsNullOrEmpty(selection)) // tries to restore the selection
+            {
+                for (int i = 0; i < dropdown.DropdownBox.Items.Count; i++)
+                {
+                    if ((dropdown.DropdownBox.Items[i] as ComboBoxItem)?.Content?.ToString() == selection)
+                    {
+                        dropdown.DropdownBox.SelectedIndex = i;
+                        return;
+                    }
+                }
+            }
+
+            dropdown.DropdownBox.SelectedIndex = 0;
+        }
 
         private void HandleColorChange(AColorChanger colorChanger, string settingKey, Action<Color> updateAction)
         {
