@@ -428,7 +428,7 @@ namespace Aimmy2.Controls
                         MainWindow.FOVWindow.RectangleShape.Visibility = Visibility.Visible;
                     };
                 })
-                .AddButton("FOV Color", c =>
+                .AddColorChanger("FOV Color", c =>
                 {
                     c.Reader.Click += (s, e) =>
                     {
@@ -523,7 +523,7 @@ namespace Aimmy2.Controls
             });
 
             builder
-                .AddButton("Detected Player Color", c =>
+                .AddColorChanger("Detected Player Color", c =>
                 {
                     c.Reader.Click += (s, e) =>
                     {
