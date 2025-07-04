@@ -4,6 +4,7 @@ using Class;
 using InputLogic;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using Newtonsoft.Json.Linq;
 using Other;
 using Supercluster.KDTree;
 using System.Diagnostics;
@@ -38,6 +39,11 @@ namespace Aimmy2.AILogic
         private int NUM_DETECTIONS { get; set; } = 8400; // Will be set dynamically for dynamic models
         private bool IsDynamicModel { get; set; } = false;
         private int ModelFixedSize { get; set; } = 640; // Store the fixed size for non-dynamic models
+        private int NUM_CLASSES { get; set; } = 1;
+        private Dictionary<int, string> _modelClasses = new Dictionary<int, string>
+        {
+            { 0, "enemy" }
+        };
 
         private const int SAVE_FRAME_COOLDOWN_MS = 500;
 
@@ -384,8 +390,10 @@ namespace Aimmy2.AILogic
                         return false;
                     }
 
+                    LoadClasses();
+
                     // For static models, validate the expected shape
-                    var expectedShape = new int[] { 1, 5, NUM_DETECTIONS };
+                    var expectedShape = new int[] { 1, 4 + NUM_CLASSES, NUM_DETECTIONS };
                     if (!outputMetadata.Values.All(metadata => metadata.Dimensions.SequenceEqual(expectedShape)))
                     {
                         LogManager.Log(LogLevel.Error,
@@ -401,6 +409,46 @@ namespace Aimmy2.AILogic
             }
 
             return false;
+        }
+
+        private void LoadClasses()
+        {
+            if (_onnxModel == null) return;
+            _modelClasses.Clear();
+
+            try
+            {
+                var metadata = _onnxModel.ModelMetadata;
+
+                if (metadata != null && metadata.CustomMetadataMap.TryGetValue("names", out string? value) && !string.IsNullOrEmpty(value))
+                {
+                    JObject data = JObject.Parse(value);
+                    if (data != null && data.Type == JTokenType.Object)
+                    {
+                        foreach (var item in data)
+                        {
+                            if (int.TryParse(item.Key, out int classId) && item.Value.Type == JTokenType.String)
+                            {
+                                _modelClasses[classId] = item.Value.ToString();
+                            }
+                        }
+                        NUM_CLASSES = _modelClasses.Count > 0 ? _modelClasses.Keys.Max() + 1 : 1;
+                        LogManager.Log(LogLevel.Info, $"Loaded {_modelClasses.Count} classes from model metadata: {data.ToString(Newtonsoft.Json.Formatting.None)}", false);
+                    }
+                    else
+                    {
+                        LogManager.Log(LogLevel.Error, "Model metadata 'names' field is not a valid JSON object.", true);
+                    }
+                }
+                else
+                {
+                    LogManager.Log(LogLevel.Error, "Model metadata does not contain 'names' field for classes.", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Log(LogLevel.Error, $"Error loading classes: {ex.Message}", true);
+            }
         }
 
         #endregion Models
@@ -599,7 +647,7 @@ namespace Aimmy2.AILogic
             }
         }
 
-        private void UpdateOverlay(DetectedPlayerWindow DetectedPlayerOverlay)
+        private void UpdateOverlay(DetectedPlayerWindow DetectedPlayerOverlay, Prediction closestPrediction)
         {
             var scalingFactorX = WinAPICaller.scalingFactorX;
             var scalingFactorY = WinAPICaller.scalingFactorY;
@@ -617,7 +665,7 @@ namespace Aimmy2.AILogic
                 if (Dictionary.toggleState["Show AI Confidence"])
                 {
                     DetectedPlayerOverlay.DetectedPlayerConfidence.Opacity = 1;
-                    DetectedPlayerOverlay.DetectedPlayerConfidence.Content = $"{Math.Round((AIConf * 100), 2)}%";
+                    DetectedPlayerOverlay.DetectedPlayerConfidence.Content = $"{closestPrediction.ClassName}: {Math.Round((AIConf * 100), 2)}%";
 
                     var labelEstimatedHalfWidth = DetectedPlayerOverlay.DetectedPlayerConfidence.ActualWidth / 2.0;
                     DetectedPlayerOverlay.DetectedPlayerConfidence.Margin = new Thickness(
@@ -691,7 +739,7 @@ namespace Aimmy2.AILogic
             {
                 using (Benchmark("UpdateOverlay"))
                 {
-                    UpdateOverlay(DetectedPlayerOverlay!);
+                    UpdateOverlay(DetectedPlayerOverlay!, closestPrediction);
                 }
                 if (!Dictionary.toggleState["Aim Assist"]) return;
             }
@@ -986,13 +1034,30 @@ namespace Aimmy2.AILogic
 
             for (int i = 0; i < NUM_DETECTIONS; i++)
             {
-                float objectness = outputTensor[0, 4, i];
-                if (objectness < minConfidence) continue;
-
                 float x_center = outputTensor[0, 0, i];
                 float y_center = outputTensor[0, 1, i];
                 float width = outputTensor[0, 2, i];
                 float height = outputTensor[0, 3, i];
+
+                int bestClassId = 0;
+                float bestConfidence = 0f;
+
+                if (NUM_CLASSES == 1)
+                {
+                    bestConfidence = outputTensor[0, 4, i];
+                }
+                else
+                {
+                    for (int classId = 0; classId < NUM_CLASSES; classId++)
+                    {
+                        float classConfidence = outputTensor[0, 4 + classId, i];
+                        if (classConfidence > bestConfidence)
+                        {
+                            bestConfidence = classConfidence;
+                            bestClassId = classId;
+                        }
+                    }
+                }
 
                 float x_min = x_center - width / 2;
                 float y_min = y_center - height / 2;
@@ -1005,7 +1070,9 @@ namespace Aimmy2.AILogic
                 Prediction prediction = new()
                 {
                     Rectangle = rect,
-                    Confidence = objectness,
+                    Confidence = bestConfidence,
+                    ClassId = bestClassId,
+                    ClassName = _modelClasses.GetValueOrDefault(bestClassId, $"Class_{bestClassId}"),
                     CenterXTranslated = (x_center - detectionBox.Left) / IMAGE_SIZE,
                     CenterYTranslated = (y_center - detectionBox.Top) / IMAGE_SIZE,
                     ScreenCenterX = detectionBox.Left + x_center,
@@ -1054,7 +1121,7 @@ namespace Aimmy2.AILogic
                 float width = DoLabel.Rectangle.Width / frame.Width;
                 float height = DoLabel.Rectangle.Height / frame.Height;
 
-                File.WriteAllText(labelPath, $"0 {x} {y} {width} {height}");
+                File.WriteAllText(labelPath, $"{DoLabel.ClassId} {x} {y} {width} {height}");
             }
         }
 
@@ -1176,6 +1243,8 @@ namespace Aimmy2.AILogic
         {
             public RectangleF Rectangle { get; set; }
             public float Confidence { get; set; }
+            public int ClassId { get; set; } = 0;
+            public string ClassName { get; set; } = "Enemy";
             public float CenterXTranslated { get; set; }
             public float CenterYTranslated { get; set; }
             public float ScreenCenterX { get; set; }  // Absolute screen position
