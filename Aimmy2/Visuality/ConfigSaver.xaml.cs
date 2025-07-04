@@ -65,10 +65,14 @@ namespace Visuality
                 SetColorAnimation((Color)SwitchMoving.Background.GetValue(SolidColorBrush.ColorProperty), EnableColor, TimeSpan.Zero);
             }
         }
-
         private void WriteJSON()
         {
-            SaveDictionary.WriteJSON(Dictionary.sliderSettings, $"bin\\configs\\{ConfigNameTextbox.Text}.cfg", RecommendedModelNameTextBox.Text, ExtraStrings);
+            SaveDictionary.WriteJSON(Dictionary.sliderSettings
+                                    .Concat(Dictionary.dropdownState)
+                                    .Where(kvp => kvp.Key != "Screen Capture Method")
+                                    .GroupBy(kvp => kvp.Key)
+                                    .ToDictionary(g => g.Key, g => g
+                                    .First().Value), $"bin\\configs\\{ConfigNameTextbox.Text}.cfg", RecommendedModelNameTextBox.Text, ExtraStrings);
             LogManager.Log(LogManager.LogLevel.Info, $"Config has been saved to bin/configs.", true);
             Close();
         }

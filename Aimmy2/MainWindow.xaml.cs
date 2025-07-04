@@ -445,7 +445,12 @@ namespace Aimmy2
         {
             Dictionary.colorState["Theme Color"] = ThemeManager.GetThemeColorHex();
 
-            SaveDictionary.WriteJSON(Dictionary.sliderSettings);
+            SaveDictionary.WriteJSON(Dictionary.sliderSettings
+                .Concat(Dictionary.dropdownState)
+                .Where(kvp => kvp.Key != "Screen Capture Method")
+                .GroupBy(kvp => kvp.Key)
+                .ToDictionary(g => g.Key, g => g
+                .First().Value));
             SaveDictionary.WriteJSON(Dictionary.minimizeState, "bin\\minimize.cfg");
             SaveDictionary.WriteJSON(Dictionary.bindingSettings, "bin\\binding.cfg");
             SaveDictionary.WriteJSON(Dictionary.dropdownState, "bin\\dropdown.cfg");
@@ -648,7 +653,7 @@ namespace Aimmy2
             uiManager.S_XOffset.Visibility = useXPercent ? Visibility.Collapsed : Visibility.Visible;
             uiManager.S_XOffsetPercent.Visibility = useXPercent ? Visibility.Visible : Visibility.Collapsed;
         }
-        
+
         private Visibility GetToggleVisibility(string title, bool collapsed = false) =>
             Dictionary.toggleState[title]
                 ? Visibility.Visible
@@ -951,6 +956,7 @@ namespace Aimmy2
         private void LoadConfig(string path = "bin\\configs\\Default.cfg", bool loading_from_configlist = false)
         {
             SaveDictionary.LoadJSON(Dictionary.sliderSettings, path);
+            SaveDictionary.LoadJSON(Dictionary.dropdownState, path);
 
             if (!loading_from_configlist || _menuControls["AimMenu"] == null || !_menuInitialized["AimMenu"])
                 return;
@@ -959,6 +965,7 @@ namespace Aimmy2
             {
                 ShowSuggestedModelIfSpecified();
                 ApplyConfigToSliders();
+                ApplyConfigToDropdowns();
             }
             catch (Exception e)
             {
@@ -999,6 +1006,61 @@ namespace Aimmy2
             };
 
             ApplySliderValues(sliderConfigs, Dictionary.sliderSettings);
+        }
+
+
+        private void ApplyConfigToDropdowns()
+        {
+            var dropdownConfigs = new[]
+            {
+
+                ("Prediction Method", uiManager.D_PredictionMethod, new Dictionary<string, int>
+                {
+                    ["Kalman Filter"] = 0,
+                    ["Shall0e's Prediction"] = 1,
+                    ["wisethef0x's EMA Prediction"] = 2
+                }),
+
+                ("Detection Area Type", uiManager.D_DetectionAreaType, new Dictionary<string, int>
+                {
+                    ["Closest to Center Screen"] = 0,
+                    ["Closest to Mouse"] = 1
+                }),
+
+                ("Aiming Boundaries Alignment", uiManager.D_AimingBoundariesAlignment, new Dictionary<string, int>
+                {
+                    ["Center"] = 0,
+                    ["Top"] = 1,
+                    ["Bottom"] = 2
+                }),
+
+                ("Mouse Movement Method", uiManager.D_MouseMovementMethod, new Dictionary<string, int>
+                {
+                    ["Mouse Event"] = 0,
+                    ["SendInput"] = 1,
+                    ["LG HUB"] = 2,
+                    ["Razer Synapse (Require Razer Peripheral)"] = 3,
+                    ["ddxoft Virtual Input Driver"] = 4
+                }),
+
+                ("Movement Path", uiManager.D_MovementPath, new Dictionary<string, int>
+                {
+                    ["Cubic Bezier"] = 0,
+                    ["Exponential"] = 1,
+                    ["Linear"] = 2,
+                    ["Adaptive"] = 3,
+                    ["Perlin Noise"] = 4
+                }),
+
+                ("Tracer Position", uiManager.D_TracerPosition, new Dictionary<string, int>
+                {
+                    ["Bottom"] = 0,
+                    ["Middle"] = 1,
+                    ["Top"] = 2,
+                })
+            };
+
+            ApplyDropdownValues(dropdownConfigs, Dictionary.dropdownState);
         }
 
         public void LoadAntiRecoilConfig(string path = "bin\\anti_recoil_configs\\Default.cfg", bool loading_outside_startup = false)
@@ -1072,6 +1134,25 @@ namespace Aimmy2
                 else if (slider != null)
                 {
                     slider.Slider.Value = defaultValue;
+                }
+            }
+        }
+
+        private void ApplyDropdownValues((string key, ADropdown? dropdown, Dictionary<string, int> mappings)[] configs, Dictionary<string, dynamic> source)
+        {
+            foreach (var (key, dropdown, mappings) in configs)
+            {
+                if (dropdown != null && source.TryGetValue(key, out var value))
+                {
+                    var stringValue = value?.ToString() ?? "";
+                    if (mappings.TryGetValue(stringValue, out int index))
+                    {
+                        dropdown.DropdownBox.SelectedIndex = index;
+                    }
+                    else
+                    {
+                        LogManager.Log(LogManager.LogLevel.Warning, $"No mapping found for '{stringValue}' in '{key}' dropdown.");
+                    }
                 }
             }
         }
