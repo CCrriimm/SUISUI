@@ -625,8 +625,8 @@ namespace Aimmy2.AILogic
 
                 await Application.Current.Dispatcher.BeginInvoke(() =>
                     Dictionary.FOVWindow.FOVStrictEnclosure.Margin = new Thickness(
-                        Convert.ToInt16(displayRelativeX / WinAPICaller.scalingFactorX) - (IMAGE_SIZE / 2),
-                        Convert.ToInt16(displayRelativeY / WinAPICaller.scalingFactorY) - (IMAGE_SIZE / 2), 0, 0));
+                        Convert.ToInt16(displayRelativeX / WinAPICaller.scalingFactorX) - 320, // this is based off the window size, not the size of the model -whip
+                        Convert.ToInt16(displayRelativeY / WinAPICaller.scalingFactorY) - 320, 0, 0));
             }
         }
 
