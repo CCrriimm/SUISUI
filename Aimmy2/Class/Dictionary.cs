@@ -58,6 +58,7 @@ namespace Aimmy2.Class
             { "Anti Recoil", false },
             { "FOV", false },
             { "Dynamic FOV", false },
+            { "Third Person Support", false },
             { "Masking", false },
             { "Show Detected Player", false },
             { "Cursor Check", false },

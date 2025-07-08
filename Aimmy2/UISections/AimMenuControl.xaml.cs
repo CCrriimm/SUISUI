@@ -419,6 +419,7 @@ namespace Aimmy2.Controls
                 })
                 .AddToggle("FOV", t => uiManager.T_FOV = t)
                 .AddToggle("Dynamic FOV", t => uiManager.T_DynamicFOV = t)
+                .AddToggle("Third Person Support", t => uiManager.T_ThirdPersonSupport = t)
                 .AddKeyChanger("Dynamic FOV Keybind", k => uiManager.C_DynamicFOV = k)
                 .AddDropdown("FOV Style", d =>
                 {
