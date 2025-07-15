@@ -393,6 +393,27 @@ namespace AILogic
                                 _lastSrcStride = srcStride;
                                 _lastDstStride = dstStride;
                             }
+
+                            if (Dictionary.toggleState["Third Person Support"])
+                            {
+                                int width = w / 2;
+                                int height = h / 2;
+                                int startY = h - height;
+
+                                byte* dstPtr = (byte*)mapDest.Scan0;
+                                for (int y = startY; y < h; y++)
+                                {
+                                    byte* rowPtr = dstPtr + (y * dstStride);
+                                    for (int x = 0; x < width; x++)
+                                    {
+                                        int pixelOffset = x * 4;
+                                        rowPtr[pixelOffset] = 0; // R
+                                        rowPtr[pixelOffset + 1] = 0; // G
+                                        rowPtr[pixelOffset + 2] = 0; // B
+                                        rowPtr[pixelOffset + 3] = 255; // A
+                                    }
+                                }
+                            }
                         }
 
                         UpdateCache(currentBitmap, detectionBox);
@@ -484,7 +505,22 @@ namespace AILogic
                         detectionBox.Size,
                         CopyPixelOperation.SourceCopy
                     );
+
+                    if (Dictionary.toggleState["Third Person Support"])
+                    {
+                        int width = screenCaptureBitmap.Width / 2;
+                        int height = screenCaptureBitmap.Height / 2;
+                        int startY = screenCaptureBitmap.Height - height;
+
+                        using (var brush = new SolidBrush(System.Drawing.Color.Black))
+                        {
+                            g.FillRectangle(brush, 0, startY, width, height);
+                        }
+                    }
                 }
+
+
+
                 return screenCaptureBitmap;
             }
             catch (Exception ex)

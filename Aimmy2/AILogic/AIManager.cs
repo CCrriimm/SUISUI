@@ -35,7 +35,7 @@ namespace Aimmy2.AILogic
         }
 
         // Dynamic properties instead of constants
-        private int IMAGE_SIZE => _currentImageSize;
+        public int IMAGE_SIZE => _currentImageSize;
         private int NUM_DETECTIONS { get; set; } = 8400; // Will be set dynamically for dynamic models
         private bool IsDynamicModel { get; set; } = false;
         private int ModelFixedSize { get; set; } = 640; // Store the fixed size for non-dynamic models
@@ -46,6 +46,7 @@ namespace Aimmy2.AILogic
         };
         public Dictionary<int, string> ModelClasses => _modelClasses; // apparently this is better than making _modelClasses public
         public static event Action<Dictionary<int, string>>? ClassesUpdated;
+        public static event Action<int>? ImageSizeUpdated;
 
         private const int SAVE_FRAME_COOLDOWN_MS = 500;
 
@@ -347,6 +348,7 @@ namespace Aimmy2.AILogic
                     // For dynamic models, calculate NUM_DETECTIONS based on selected image size
                     NUM_DETECTIONS = CalculateNumDetections(IMAGE_SIZE);
                     LoadClasses();
+                    ImageSizeUpdated?.Invoke(IMAGE_SIZE);
                     LogManager.Log(LogLevel.Info, $"Loaded dynamic model - using selected image size {IMAGE_SIZE}x{IMAGE_SIZE} with {NUM_DETECTIONS} detections", true, 3000);
                 }
                 else
@@ -384,6 +386,7 @@ namespace Aimmy2.AILogic
 
                         // The IMAGE_SIZE property will now return the correct value
                         NUM_DETECTIONS = CalculateNumDetections(fixedInputSize);
+                        ImageSizeUpdated?.Invoke(fixedInputSize);
                     }
                     else if (!supportedSizes.Contains(fixedSizeStr))
                     {
@@ -625,8 +628,8 @@ namespace Aimmy2.AILogic
 
                 await Application.Current.Dispatcher.BeginInvoke(() =>
                     Dictionary.FOVWindow.FOVStrictEnclosure.Margin = new Thickness(
-                        Convert.ToInt16(displayRelativeX / WinAPICaller.scalingFactorX) - (IMAGE_SIZE / 2),
-                        Convert.ToInt16(displayRelativeY / WinAPICaller.scalingFactorY) - (IMAGE_SIZE / 2), 0, 0));
+                        Convert.ToInt16(displayRelativeX / WinAPICaller.scalingFactorX) - 320, // this is based off the window size, not the size of the model -whip
+                        Convert.ToInt16(displayRelativeY / WinAPICaller.scalingFactorY) - 320, 0, 0));
             }
         }
 

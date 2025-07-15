@@ -76,13 +76,13 @@ namespace Class
 
         // FOV
         public ATitle? AT_FOV { get; set; }
+        public AToggle? T_FOV { get; set; }
+        public AToggle? T_DynamicFOV { get; set; }
+        public AToggle? T_ThirdPersonSupport { get; set; }
+        public AKeyChanger? C_DynamicFOV { get; set; }
         //--
         public ADropdown D_FOVSTYLE { get; set; }
         //--
-        public AToggle? T_FOV { get; set; }
-
-        public AToggle? T_DynamicFOV { get; set; }
-        public AKeyChanger? C_DynamicFOV { get; set; }
         public AColorChanger? CC_FOVColor { get; set; }
         public ASlider? S_FOVSize { get; set; }
         public ASlider? S_DynamicFOVSize { get; set; }
