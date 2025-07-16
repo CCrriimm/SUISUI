@@ -216,8 +216,6 @@ namespace Aimmy2
             // Run non-UI operations in background
             await Task.Run(() =>
             {
-                arManager.HoldDownLoad();
-
                 // Load configurations that don't create UI
                 var configs = new[]
                 {
@@ -238,6 +236,7 @@ namespace Aimmy2
             LoadConfig();
             LoadAntiRecoilConfig();
 
+            arManager.HoldDownLoad(); // needs to be ran on ui thread or just cant be run via Task.Run -whip
             ApplyThemeColorFromConfig();
         }
 
