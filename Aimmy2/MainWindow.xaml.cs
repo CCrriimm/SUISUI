@@ -101,6 +101,7 @@ namespace Aimmy2
                 await InitializeApplicationAsync();
                 UpdateAboutSpecs();
                 ApplyThemeGradients();
+                ThemeManager.LoadMediaSettings();
             }
             catch (Exception ex)
             {
