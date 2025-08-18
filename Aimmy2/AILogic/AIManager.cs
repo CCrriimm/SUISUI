@@ -14,7 +14,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using Visuality;
-using LogLevel = Other.LogManager.LogLevel;
+using static AILogic.MathUtil;
+using static Other.LogManager;
 
 namespace Aimmy2.AILogic
 {
@@ -56,14 +57,7 @@ namespace Aimmy2.AILogic
         private KalmanPrediction kalmanPrediction;
         private WiseTheFoxPrediction wtfpredictionManager;
 
-        //private Bitmap? _screenCaptureBitmap;
         private byte[]? _bitmapBuffer; // Reusable buffer for bitmap operations
-
-        // Screen capture
-        //private Device _dxDevice;
-        //private OutputDuplication _deskDuplication;
-        //private Texture2DDescription _texDesc;
-        //private Texture2D _stagingTex;
 
         // Display-aware properties
         private int ScreenWidth => DisplayManager.ScreenWidth;
@@ -81,10 +75,9 @@ namespace Aimmy2.AILogic
         private bool PlayerFound = false;
 
         // Sticky-Aim 
-        private Prediction _currentTarget = null;
+        private Prediction? _currentTarget = null;
         private int _consecutiveFramesWithoutTarget = 0;
         private const int MAX_FRAMES_WITHOUT_TARGET = 3; // Allow 3 frames of target loss
-                                                         //private const float TARGET_MATCH_THRESHOLD = 50f; (now is a slider, Dictionary.sliderSettings["Sticky Aim Threshold"])
 
         private double CenterXTranslated = 0;
         private double CenterYTranslated = 0;
@@ -193,7 +186,7 @@ namespace Aimmy2.AILogic
 
                 //File.WriteAllLines("AIManager_Benchmarks.txt", lines);
 
-                LogManager.Log(LogManager.LogLevel.Info, string.Join(Environment.NewLine, lines));
+                Log(LogLevel.Info, string.Join(Environment.NewLine, lines));
             }
         }
 
@@ -241,7 +234,7 @@ namespace Aimmy2.AILogic
                 }
                 catch (Exception ex)
                 {
-                    LogManager.Log(LogLevel.Error, $"Error starting the model via DirectML: {ex.Message}\n\nFalling back to CPU, performance may be poor.", true);
+                    Log(LogLevel.Error, $"Error starting the model via DirectML: {ex.Message}\n\nFalling back to CPU, performance may be poor.", true);
 
                     try
                     {
@@ -249,7 +242,7 @@ namespace Aimmy2.AILogic
                     }
                     catch (Exception e)
                     {
-                        LogManager.Log(LogLevel.Error, $"Error starting the model via CPU: {e.Message}, you won't be able to aim assist at all.", true);
+                        Log(LogLevel.Error, $"Error starting the model via CPU: {e.Message}, you won't be able to aim assist at all.", true);
                     }
                 }
 
@@ -257,7 +250,7 @@ namespace Aimmy2.AILogic
             }
         }
 
-        private async Task LoadModelAsync(SessionOptions sessionOptions, string modelPath, bool useDirectML)
+        private Task LoadModelAsync(SessionOptions sessionOptions, string modelPath, bool useDirectML)
         {
             try
             {
@@ -271,7 +264,7 @@ namespace Aimmy2.AILogic
                 if (!ValidateOnnxShape())
                 {
                     _onnxModel?.Dispose();
-                    return; // Exit early if validation fails
+                    return Task.CompletedTask;
                 }
 
                 // Pre-allocate bitmap buffer
@@ -279,9 +272,9 @@ namespace Aimmy2.AILogic
             }
             catch (Exception ex)
             {
-                LogManager.Log(LogLevel.Error, $"Error loading the model: {ex.Message}", true);
+                Log(LogLevel.Error, $"Error loading the model: {ex.Message}", true);
                 _onnxModel?.Dispose();
-                return;
+                return Task.CompletedTask;
             }
 
             // Begin the loop
@@ -292,16 +285,7 @@ namespace Aimmy2.AILogic
                 Priority = ThreadPriority.AboveNormal // Higher priority for AI thread
             };
             _aiLoopThread.Start();
-        }
-
-        private int CalculateNumDetections(int imageSize)
-        {
-            // YOLOv8 detection calculation: (size/8)² + (size/16)² + (size/32)²
-            int stride8 = imageSize / 8;
-            int stride16 = imageSize / 16;
-            int stride32 = imageSize / 32;
-
-            return (stride8 * stride8) + (stride16 * stride16) + (stride32 * stride32);
+            return Task.CompletedTask;
         }
 
         private bool ValidateOnnxShape()
@@ -311,8 +295,8 @@ namespace Aimmy2.AILogic
                 var inputMetadata = _onnxModel.InputMetadata;
                 var outputMetadata = _onnxModel.OutputMetadata;
 
-                LogManager.Log(LogLevel.Info, "=== Model Metadata ===");
-                LogManager.Log(LogLevel.Info, "Input Metadata:");
+                Log(LogLevel.Info, "=== Model Metadata ===");
+                Log(LogLevel.Info, "Input Metadata:");
 
                 bool isDynamic = false;
                 int fixedInputSize = 0;
@@ -320,7 +304,7 @@ namespace Aimmy2.AILogic
                 foreach (var kvp in inputMetadata)
                 {
                     string dimensionsStr = string.Join("x", kvp.Value.Dimensions);
-                    LogManager.Log(LogLevel.Info, $"  Name: {kvp.Key}, Dimensions: {dimensionsStr}");
+                    Log(LogLevel.Info, $"  Name: {kvp.Key}, Dimensions: {dimensionsStr}");
 
                     // Check if model is dynamic (dimensions are -1)
                     if (kvp.Value.Dimensions.Any(d => d == -1))
@@ -334,11 +318,11 @@ namespace Aimmy2.AILogic
                     }
                 }
 
-                LogManager.Log(LogLevel.Info, "Output Metadata:");
+                Log(LogLevel.Info, "Output Metadata:");
                 foreach (var kvp in outputMetadata)
                 {
                     string dimensionsStr = string.Join("x", kvp.Value.Dimensions);
-                    LogManager.Log(LogLevel.Info, $"  Name: {kvp.Key}, Dimensions: {dimensionsStr}");
+                    Log(LogLevel.Info, $"  Name: {kvp.Key}, Dimensions: {dimensionsStr}");
                 }
 
                 IsDynamicModel = isDynamic;
@@ -349,7 +333,7 @@ namespace Aimmy2.AILogic
                     NUM_DETECTIONS = CalculateNumDetections(IMAGE_SIZE);
                     LoadClasses();
                     ImageSizeUpdated?.Invoke(IMAGE_SIZE);
-                    LogManager.Log(LogLevel.Info, $"Loaded dynamic model - using selected image size {IMAGE_SIZE}x{IMAGE_SIZE} with {NUM_DETECTIONS} detections", true, 3000);
+                    Log(LogLevel.Info, $"Loaded dynamic model - using selected image size {IMAGE_SIZE}x{IMAGE_SIZE} with {NUM_DETECTIONS} detections", true, 3000);
                 }
                 else
                 {
@@ -363,7 +347,7 @@ namespace Aimmy2.AILogic
                     if (fixedInputSize != IMAGE_SIZE && supportedSizes.Contains(fixedSizeStr))
                     {
                         // Auto-adjust the image size to match the model
-                        LogManager.Log(LogLevel.Warning,
+                        Log(LogLevel.Warning,
                             $"Fixed-size model expects {fixedInputSize}x{fixedInputSize}. Automatically adjusting Image Size setting.",
                             true, 3000);
 
@@ -390,7 +374,7 @@ namespace Aimmy2.AILogic
                     }
                     else if (!supportedSizes.Contains(fixedSizeStr))
                     {
-                        LogManager.Log(LogLevel.Error,
+                        Log(LogLevel.Error,
                             $"Model requires unsupported size {fixedInputSize}x{fixedInputSize}. Supported sizes are: {string.Join(", ", supportedSizes)}",
                             true, 10000);
                         return false;
@@ -402,13 +386,13 @@ namespace Aimmy2.AILogic
                     var expectedShape = new int[] { 1, 4 + NUM_CLASSES, NUM_DETECTIONS };
                     if (!outputMetadata.Values.All(metadata => metadata.Dimensions.SequenceEqual(expectedShape)))
                     {
-                        LogManager.Log(LogLevel.Error,
+                        Log(LogLevel.Error,
                             $"Output shape does not match the expected shape of {string.Join("x", expectedShape)}.\nThis model will not work with Aimmy, please use an YOLOv8 model converted to ONNXv8.",
                             true, 10000);
                         return false;
                     }
 
-                    LogManager.Log(LogLevel.Info, $"Loaded fixed-size model: {fixedInputSize}x{fixedInputSize}", true, 2000);
+                    Log(LogLevel.Info, $"Loaded fixed-size model: {fixedInputSize}x{fixedInputSize}", true, 2000);
                 }
 
                 return true;
@@ -426,11 +410,14 @@ namespace Aimmy2.AILogic
             {
                 var metadata = _onnxModel.ModelMetadata;
 
-                if (metadata != null && metadata.CustomMetadataMap.TryGetValue("names", out string? value) && !string.IsNullOrEmpty(value))
+                if (metadata != null && 
+                    metadata.CustomMetadataMap.TryGetValue("names", out string? value) &&
+                    !string.IsNullOrEmpty(value))
                 {
                     JObject data = JObject.Parse(value);
                     if (data != null && data.Type == JTokenType.Object)
                     {
+                        int maxClassId = -1;
                         foreach (var item in data)
                         {
                             if (int.TryParse(item.Key, out int classId) && item.Value.Type == JTokenType.String)
@@ -439,22 +426,22 @@ namespace Aimmy2.AILogic
                             }
                         }
                         NUM_CLASSES = _modelClasses.Count > 0 ? _modelClasses.Keys.Max() + 1 : 1;
-                        LogManager.Log(LogLevel.Info, $"Loaded {_modelClasses.Count} class(es) from model metadata: {data.ToString(Newtonsoft.Json.Formatting.None)}", false);
+                        Log(LogLevel.Info, $"Loaded {_modelClasses.Count} class(es) from model metadata: {data.ToString(Newtonsoft.Json.Formatting.None)}", false);
                     }
                     else
                     {
-                        LogManager.Log(LogLevel.Error, "Model metadata 'names' field is not a valid JSON object.", true);
+                        Log(LogLevel.Error, "Model metadata 'names' field is not a valid JSON object.", true);
                     }
                 }
                 else
                 {
-                    LogManager.Log(LogLevel.Error, "Model metadata does not contain 'names' field for classes.", true);
+                    Log(LogLevel.Error, "Model metadata does not contain 'names' field for classes.", true);
                 }
                 ClassesUpdated?.Invoke(new Dictionary<int, string>(_modelClasses));
             }
             catch (Exception ex)
             {
-                LogManager.Log(LogLevel.Error, $"Error loading classes: {ex.Message}", true);
+                Log(LogLevel.Error, $"Error loading classes: {ex.Message}", true);
             }
         }
 
@@ -557,14 +544,19 @@ namespace Aimmy2.AILogic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task AutoTrigger()
         {
+            // if auto trigger is disabled,
+            // or if the aim keybinds are not held,
+            // or if constant AI tracking is enabled,
+            // we check for spray release and return
             if (!Dictionary.toggleState["Auto Trigger"] ||
-                !(InputBindingManager.IsHoldingBinding("Aim Keybind") ||
-                !(InputBindingManager.IsHoldingBinding("Second Aim Keybind"))) ||
-                Dictionary.toggleState["Constant AI Tracking"])
+                !(InputBindingManager.IsHoldingBinding("Aim Keybind") && !InputBindingManager.IsHoldingBinding("Second Aim Keybind")) ||
+                Dictionary.toggleState["Constant AI Tracking"]) // this logic is a bit weird, but it works.
+                                                                // but it might need to be revised
             {
                 CheckSprayRelease();
                 return;
             }
+
 
             if (Dictionary.toggleState["Spray Mode"])
             {
@@ -599,10 +591,13 @@ namespace Aimmy2.AILogic
         {
             if (!Dictionary.toggleState["Spray Mode"]) return;
 
+            // if auto trigger is disabled, we reset the spray state
+            // if the aim keybinds are not held, we reset the spray state
             bool shouldSpray = Dictionary.toggleState["Auto Trigger"] &&
-                ((InputBindingManager.IsHoldingBinding("Aim Keybind") || InputBindingManager.IsHoldingBinding("Second Aim Keybind")) ||
-                Dictionary.toggleState["Constant AI Tracking"]);
+                (InputBindingManager.IsHoldingBinding("Aim Keybind") && InputBindingManager.IsHoldingBinding("Second Aim Keybind")); //||
+                                                                                                                                     //Dictionary.toggleState["Constant AI Tracking"];
 
+            // spray mode might need to be revised - taylor
             if (!shouldSpray)
             {
                 MouseManager.ResetSprayState();
@@ -922,10 +917,11 @@ namespace Aimmy2.AILogic
                 inputArray = _reusableInputArray;
 
                 // Fill the reusable array
-                BitmapToFloatArrayInPlace(frame, inputArray);
+                BitmapToFloatArrayInPlace(frame, inputArray, IMAGE_SIZE);
             }
 
             // Reuse tensor and inputs - recreate if size changed
+            /// this needs to be revised !!!!! - taylor
             if (_reusableTensor == null || _reusableTensor.Dimensions[2] != IMAGE_SIZE)
             {
                 _reusableTensor = new DenseTensor<float>(inputArray, new int[] { 1, 3, IMAGE_SIZE, IMAGE_SIZE });
@@ -934,18 +930,24 @@ namespace Aimmy2.AILogic
             else
             {
                 // Directly copy into existing DenseTensor buffer
-                inputArray.AsSpan().CopyTo(_reusableTensor.Buffer.Span);
+                inputArray.AsSpan().CopyTo(_reusableTensor.Buffer.Span); 
             }
 
             if (_onnxModel == null) return null;
 
-            IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results;
+            Tensor<float>? outputTensor = null;
             using (Benchmark("ModelInference"))
             {
-                results = _onnxModel.Run(_reusableInputs, _outputNames, _modeloptions);
+                using var results = _onnxModel.Run(_reusableInputs, _outputNames, _modeloptions);
+                outputTensor = results[0].AsTensor<float>();
             }
 
-            var outputTensor = results[0].AsTensor<float>();
+            if(outputTensor == null)
+            {
+                Log(LogLevel.Error, "Model inference returned null output tensor.", true, 2000);
+                SaveFrame(frame);
+                return null;
+            }
 
             // Calculate the FOV boundaries
             float FovSize = (float)Dictionary.sliderSettings["FOV Size"];
@@ -967,15 +969,22 @@ namespace Aimmy2.AILogic
                 return null;
             }
 
-            KDTree<double, Prediction> tree;
-            Tuple<double[], Prediction>[]? nearest;
-            using (Benchmark("KDTreeOperations"))
-            {
-                tree = new KDTree<double, Prediction>(2, KDpoints.ToArray(), KDPredictions.ToArray(), L2Norm_Squared_Double);
-                nearest = tree.NearestNeighbors(new double[] { IMAGE_SIZE / 2.0, IMAGE_SIZE / 2.0 }, 1);
-            }
+            //kdtree was replaced with linear search
+            Prediction? bestCandidate = null;
+            double bestDistSq = double.MaxValue;
+            double center = IMAGE_SIZE / 2.0;
 
-            Prediction? bestCandidate = (nearest.Length > 0) ? nearest[0].Item2 : null;
+            using (Benchmark("LinearSearch"))
+            {
+                foreach (var p in KDPredictions)
+                {
+                    var dx = p.CenterXTranslated * IMAGE_SIZE - center;
+                    var dy = p.CenterYTranslated * IMAGE_SIZE - center;
+                    double d2 = dx * dx + dy * dy; // dx^2 + dy^2
+
+                    if (d2 < bestDistSq) { bestDistSq = d2; bestCandidate = p; }
+                }
+            }
 
             Prediction? finalTarget = HandleStickyAim(bestCandidate, KDPredictions);
             if (finalTarget != null)
@@ -985,17 +994,24 @@ namespace Aimmy2.AILogic
                 return finalTarget;
             }
 
+            frame.Dispose(); // Dispose the frame to free resources
             return null;
         }
         private Prediction? HandleStickyAim(Prediction? bestCandidate, List<Prediction> KDPredictions)
         {
             bool stickyAimEnabled = Dictionary.toggleState["Sticky Aim"];
-            if (!stickyAimEnabled) return bestCandidate;
+            if (!stickyAimEnabled)
+            {
+                _currentTarget = bestCandidate; // update anyway
+                return bestCandidate;
+            }
+
+            float thresholdSqr = (float)Math.Pow(Dictionary.sliderSettings["Sticky Aim Threshold"], 2);
+
             if (_currentTarget != null)
             {
                 Prediction? matchedTarget = null;
                 float minSqrDistance = float.MaxValue;
-                float thresholdSqr = (float)Math.Pow(Dictionary.sliderSettings["Sticky Aim Threshold"], 2);
 
                 foreach (var candidate in KDPredictions)
                 {
@@ -1010,6 +1026,7 @@ namespace Aimmy2.AILogic
                 if (matchedTarget != null)
                 {
                     _consecutiveFramesWithoutTarget = 0;
+                    _currentTarget = matchedTarget;
                     return matchedTarget;
                 }
 
@@ -1017,7 +1034,13 @@ namespace Aimmy2.AILogic
                 {
                     _currentTarget = null;
                 }
+                else
+                {
+                    return null; // No suitable target found, keep the current target
+                }
             }
+
+            _currentTarget = bestCandidate;
             return bestCandidate;
         }
 
@@ -1031,7 +1054,9 @@ namespace Aimmy2.AILogic
             CenterXTranslated = target.CenterXTranslated;
             CenterYTranslated = target.CenterYTranslated;
         }
-        private (List<double[]>, List<Prediction>) PrepareKDTreeData(Tensor<float> outputTensor, Rectangle detectionBox,
+        private (List<double[]>, List<Prediction>) PrepareKDTreeData(
+            Tensor<float> outputTensor,
+            Rectangle detectionBox,
             float fovMinX, float fovMaxX, float fovMinY, float fovMaxY)
         {
             float minConfidence = (float)Dictionary.sliderSettings["AI Minimum Confidence"] / 100.0f;
@@ -1092,8 +1117,8 @@ namespace Aimmy2.AILogic
                     Confidence = bestConfidence,
                     ClassId = bestClassId,
                     ClassName = _modelClasses.GetValueOrDefault(bestClassId, $"Class_{bestClassId}"),
-                    CenterXTranslated = (x_center - detectionBox.Left) / IMAGE_SIZE,
-                    CenterYTranslated = (y_center - detectionBox.Top) / IMAGE_SIZE,
+                    CenterXTranslated = x_center / IMAGE_SIZE,
+                    CenterYTranslated = y_center / IMAGE_SIZE,
                     ScreenCenterX = detectionBox.Left + x_center,
                     ScreenCenterY = detectionBox.Top + y_center
                 };
@@ -1148,81 +1173,6 @@ namespace Aimmy2.AILogic
 
         #endregion Screen Capture
 
-        #region Optimized Math
-
-        public static Func<double[], double[], double> L2Norm_Squared_Double = (x, y) =>
-        {
-            double dist = 0f;
-            for (int i = 0; i < x.Length; i++)
-            {
-                dist += (x[i] - y[i]) * (x[i] - y[i]);
-            }
-
-            return dist;
-        };
-        private float Distance(Prediction a, Prediction b)
-        {
-            float dx = a.ScreenCenterX - b.ScreenCenterX;
-            float dy = a.ScreenCenterY - b.ScreenCenterY;
-            return (float)Math.Sqrt(dx * dx + dy * dy);
-        }
-
-        private unsafe void BitmapToFloatArrayInPlace(Bitmap image, float[] result)
-        {
-            int width = IMAGE_SIZE;
-            int height = IMAGE_SIZE;
-            int totalPixels = width * height;
-            const float multiplier = 1f / 255f;
-
-            var rect = new Rectangle(0, 0, width, height);
-            var bmpData = image.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb); //3 bytes per pixel
-                                                                                                    // blue green red (strict order)
-            try
-            {
-                int stride = bmpData.Stride;
-                byte* basePtr = (byte*)bmpData.Scan0;
-                int redOffset = 0;
-                int greenOffset = totalPixels;
-                int blueOffset = 2 * totalPixels;
-
-                //for each row in the image -> create a temporary array for red green and blue (rgb)
-                Parallel.For(0, height, () => (localR: new float[width], localG: new float[width], localB: new float[width]),
-                (y, state, local) =>
-                {
-                    byte* row = basePtr + (y * stride);
-
-                    // process entire row in local buffers
-                    for (int x = 0; x < width; x++)
-                    {
-                        int bufferIndex = x * 3;
-                        // BGR byte order: +2 = R, +1 = G, +0 = B
-                        // B = 0
-                        // G = 1
-                        // R = 2
-                        // (bufferIndex + x)
-                        local.localR[x] = row[bufferIndex + 2] * multiplier;
-                        local.localG[x] = row[bufferIndex + 1] * multiplier;
-                        local.localB[x] = row[bufferIndex] * multiplier;
-                    }
-
-                    // after processing the row copy the results into the final array
-                    int rowStart = y * width;
-                    Array.Copy(local.localR, 0, result, redOffset + rowStart, width);
-                    Array.Copy(local.localG, 0, result, greenOffset + rowStart, width);
-                    Array.Copy(local.localB, 0, result, blueOffset + rowStart, width);
-
-                    return local;
-                },
-                _ => { });
-            }
-            finally
-            {
-                image.UnlockBits(bmpData);
-            }
-        }
-
-        #endregion Optimized Math
-
         public void Dispose()
         {
             // Signal that we're shutting down
@@ -1246,7 +1196,6 @@ namespace Aimmy2.AILogic
             PrintBenchmarks();
 
             // Dispose DXGI objects
-            _captureManager.DisposeDxgiResources();
             _captureManager.Dispose();
 
             // Clean up other resources
@@ -1255,19 +1204,17 @@ namespace Aimmy2.AILogic
             _onnxModel?.Dispose();
             _modeloptions?.Dispose();
             _bitmapBuffer = null;
-            _captureManager.screenCaptureBitmap?.Dispose();
         }
-
-        public class Prediction
-        {
-            public RectangleF Rectangle { get; set; }
-            public float Confidence { get; set; }
-            public int ClassId { get; set; } = 0;
-            public string ClassName { get; set; } = "Enemy";
-            public float CenterXTranslated { get; set; }
-            public float CenterYTranslated { get; set; }
-            public float ScreenCenterX { get; set; }  // Absolute screen position
-            public float ScreenCenterY { get; set; }
-        }
+    }
+    public class Prediction
+    {
+        public RectangleF Rectangle { get; set; }
+        public float Confidence { get; set; }
+        public int ClassId { get; set; } = 0;
+        public string ClassName { get; set; } = "Enemy";
+        public float CenterXTranslated { get; set; }
+        public float CenterYTranslated { get; set; }
+        public float ScreenCenterX { get; set; }  // Absolute screen position
+        public float ScreenCenterY { get; set; }
     }
 }
