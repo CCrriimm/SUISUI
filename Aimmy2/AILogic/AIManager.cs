@@ -6,7 +6,6 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Newtonsoft.Json.Linq;
 using Other;
-using Supercluster.KDTree;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -417,7 +416,7 @@ namespace Aimmy2.AILogic
                     JObject data = JObject.Parse(value);
                     if (data != null && data.Type == JTokenType.Object)
                     {
-                        int maxClassId = -1;
+                        //int maxClassId = -1;
                         foreach (var item in data)
                         {
                             if (int.TryParse(item.Key, out int classId) && item.Value.Type == JTokenType.String)
@@ -869,7 +868,8 @@ namespace Aimmy2.AILogic
 
         private async Task<Prediction?> GetClosestPrediction(bool useMousePosition = true)
         {
-            int adjustedTargetX, adjustedTargetY;
+            //whats these variables for? - taylor 
+            //int adjustedTargetX, adjustedTargetY;
 
             if (Dictionary.dropdownState["Detection Area Type"] == "Closest to Mouse")
             {
@@ -956,14 +956,14 @@ namespace Aimmy2.AILogic
             float fovMinY = (IMAGE_SIZE - FovSize) / 2.0f;
             float fovMaxY = (IMAGE_SIZE + FovSize) / 2.0f;
 
-            List<double[]> KDpoints;
+            //List<double[]> KDpoints;
             List<Prediction> KDPredictions;
             using (Benchmark("PrepareKDTreeData"))
             {
-                (KDpoints, KDPredictions) = PrepareKDTreeData(outputTensor, detectionBox, fovMinX, fovMaxX, fovMinY, fovMaxY);
+                KDPredictions = PrepareKDTreeData(outputTensor, detectionBox, fovMinX, fovMaxX, fovMinY, fovMaxY);
             }
 
-            if (KDpoints.Count == 0 || KDPredictions.Count == 0)
+            if (KDPredictions.Count == 0)
             {
                 SaveFrame(frame);
                 return null;
@@ -974,7 +974,10 @@ namespace Aimmy2.AILogic
             double bestDistSq = double.MaxValue;
             double center = IMAGE_SIZE / 2.0;
 
-            using (Benchmark("LinearSearch"))
+            // TODO: Optimize this linear search further if needed
+            // TODO: Consider updating KD-Tree and adding options to switch from linear to kd.
+            // we can honestly replacing linear search by letting sticky aim handle the search
+            using (Benchmark("LinearSearch")) 
             {
                 foreach (var p in KDPredictions)
                 {
@@ -997,16 +1000,38 @@ namespace Aimmy2.AILogic
             frame.Dispose(); // Dispose the frame to free resources
             return null;
         }
+
+        // sticky aim needs to be refined
+        // this is a very basic implementation of sticky aim, it will be improved in the future.
+        /// TODO: REFINE linear search to find closest target based on mouse position / current target (?)
+        /// e.g whatever is closer to the current target
         private Prediction? HandleStickyAim(Prediction? bestCandidate, List<Prediction> KDPredictions)
         {
-            bool stickyAimEnabled = Dictionary.toggleState["Sticky Aim"];
-            if (!stickyAimEnabled)
+            if (!Dictionary.toggleState["Sticky Aim"])
             {
                 _currentTarget = bestCandidate; // update anyway
                 return bestCandidate;
             }
 
-            float thresholdSqr = (float)Math.Pow(Dictionary.sliderSettings["Sticky Aim Threshold"], 2);
+            float threshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
+            float thresholdSqr = threshold * threshold;
+
+            if (bestCandidate == null || KDPredictions == null || KDPredictions.Count == 0)
+            {
+                if (_currentTarget != null)
+                {
+                    if (++_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
+                    {
+                        return null;
+                    }
+
+                    // keep previous target while within grace period
+                    return _currentTarget;
+                }
+                return null;
+            }
+            // reset consecutive frames since we have a target
+            _consecutiveFramesWithoutTarget = 0;
 
             if (_currentTarget != null)
             {
@@ -1029,17 +1054,9 @@ namespace Aimmy2.AILogic
                     _currentTarget = matchedTarget;
                     return matchedTarget;
                 }
-
-                if (++_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
-                {
-                    _currentTarget = null;
-                }
-                else
-                {
-                    return null; // No suitable target found, keep the current target
-                }
             }
 
+            // acquire a new target
             _currentTarget = bestCandidate;
             return bestCandidate;
         }
@@ -1054,7 +1071,8 @@ namespace Aimmy2.AILogic
             CenterXTranslated = target.CenterXTranslated;
             CenterYTranslated = target.CenterYTranslated;
         }
-        private (List<double[]>, List<Prediction>) PrepareKDTreeData(
+        // is it really kdtreedata though....
+        private List<Prediction> PrepareKDTreeData(
             Tensor<float> outputTensor,
             Rectangle detectionBox,
             float fovMinX, float fovMaxX, float fovMinY, float fovMaxY)
@@ -1063,8 +1081,9 @@ namespace Aimmy2.AILogic
             string selectedClass = Dictionary.dropdownState["Target Class"];
             int selectedClassId = selectedClass == "Best Confidence" ? -1 : _modelClasses.FirstOrDefault(c => c.Value == selectedClass).Key;
 
-            var KDpoints = new List<double[]>(100); // Pre-allocate with estimated capacity
-            var KDpredictions = new List<Prediction>(100);
+            // we dont use kdpoints anymore because we replaced the kd-tree with a linear search
+            //var KDpoints = new List<double[]>(NUM_DETECTIONS); // Pre-allocate with estimated capacity
+            var KDpredictions = new List<Prediction>(NUM_DETECTIONS);
 
             for (int i = 0; i < NUM_DETECTIONS; i++)
             {
@@ -1123,11 +1142,11 @@ namespace Aimmy2.AILogic
                     ScreenCenterY = detectionBox.Top + y_center
                 };
 
-                KDpoints.Add(new double[] { x_center, y_center });
+                //KDpoints.Add(new double[] { x_center, y_center });
                 KDpredictions.Add(prediction);
             }
 
-            return (KDpoints, KDpredictions);
+            return KDpredictions;
         }
 
         #endregion AI Loop Functions

@@ -510,10 +510,8 @@ namespace AILogic
                         int height = screenCaptureBitmap.Height / 2;
                         int startY = screenCaptureBitmap.Height - height;
 
-                        using (var brush = new SolidBrush(System.Drawing.Color.Black))
-                        {
-                            g.FillRectangle(brush, 0, startY, width, height);
-                        }
+                        using var brush = new SolidBrush(System.Drawing.Color.Black);
+                        g.FillRectangle(brush, 0, startY, width, height);
                     }
                 }
 
