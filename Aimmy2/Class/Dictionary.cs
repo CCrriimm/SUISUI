@@ -20,6 +20,12 @@ namespace Aimmy2.Class
             { "Disable Anti Recoil Keybind", "Oem6"},
             { "Gun 1 Key", "D1"},
             { "Gun 2 Key", "D2"},
+            // Key binds for toggles
+            { "Aim Assist TKB", ""},
+            { "Constant AI Tracking TKB", ""},
+            { "Predictions TKB", ""},
+            { "EMA Smoothening TKB", ""},
+            { "Sticky Aim TKB", ""}
         };
 
         public static Dictionary<string, dynamic> sliderSettings = new()
