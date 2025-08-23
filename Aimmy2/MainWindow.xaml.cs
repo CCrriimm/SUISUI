@@ -728,7 +728,7 @@ namespace Aimmy2
                 ["Anti Recoil Keybind"] = () => HandleAntiRecoil(true),
                 ["Disable Anti Recoil Keybind"] = DisableAntiRecoil,
                 ["Gun 1 Key"] = () => LoadGunConfig("Gun 1 Config"),
-                ["Gun 2 Key"] = () => LoadGunConfig("Gun 2 Config")
+                ["Gun 2 Key"] = () => LoadGunConfig("Gun 2 Config"),
                 // Keybinds for toggles
                 ["Aim Assist TKB"] = () => uiManager.T_AimAligner.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
                 ["Constant AI Tracking TKB"] = () => uiManager.T_ConstantAITracking.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
