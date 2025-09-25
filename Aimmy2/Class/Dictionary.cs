@@ -25,7 +25,8 @@ namespace Aimmy2.Class
             { "Constant AI Tracking TKB", ""},
             { "Predictions TKB", ""},
             { "EMA Smoothening TKB", ""},
-            { "Sticky Aim TKB", ""}
+            { "Sticky Aim TKB", ""},
+            { "Enable StreamGuard TKB", ""}
         };
 
         public static Dictionary<string, dynamic> sliderSettings = new()

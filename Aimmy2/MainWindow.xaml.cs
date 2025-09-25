@@ -734,7 +734,8 @@ namespace Aimmy2
                 ["Constant AI Tracking TKB"] = () => uiManager.T_ConstantAITracking.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
                 ["Predictions TKB"] = () => uiManager.T_Predictions.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
                 ["EMA Smoothening TKB"] = () => uiManager.T_EMASmoothing.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["Sticky Aim TKB"] = () => uiManager.T_StickyAim.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))
+                ["Sticky Aim TKB"] = () => uiManager.T_StickyAim.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
+                ["Enable StreamGuard TKB"] = () => uiManager.T_StreamGuard.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))
             };
 
             handlers.GetValueOrDefault(bindingId)?.Invoke();
