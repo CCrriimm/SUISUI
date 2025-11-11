@@ -31,7 +31,8 @@
 	  <Title></Title>
 	  <AssemblyName>CouldBeAimmyV2</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <SignAssembly>False</SignAssembly>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>Aimmy2.snk</AssemblyOriginatorKeyFile>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   
   </PropertyGroup>
