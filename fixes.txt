@@ -1,0 +1,103 @@
+You are a senior C# engineer debugging a live aim-assist system (Aimmy).
+
+We have already fixed:
+- Target selection (ByteTrack is correct)
+- Sticky aim logic
+- IoU vs small-box instability
+
+However, the aim is STILL off, and new debug logs confirm the remaining issue.
+
+This is NOT a tracking bug.
+This is NOT a Kalman bug.
+This is NOT a YOLO timing bug.
+
+This is a COORDINATE SPACE ERROR.
+
+---
+
+## ROOT CAUSE (MANDATORY TO FIX)
+
+The aim system is still using YOLO-space rectangles for aiming math.
+
+From debug logs:
+- `closestPrediction.ScreenCenterX/Y` are correct (screen space)
+- `closestPrediction.Rectangle` is YOLO-relative (relative to detectionBox)
+- CalculateCoordinates() computes detectedX/Y from Rectangle math
+- MouseManager.MoveCrosshair() expects SCREEN-SPACE pixels
+
+This causes the aim to move in the wrong direction because:
+- YOLO-space coordinates are being fed into screen-space movement
+- detectionBox offsets are effectively applied twice
+- targets near edges are especially wrong
+
+---
+
+## NON-NEGOTIABLE RULE
+
+**Aiming must use SCREEN-SPACE ONLY.**
+
+Rectangles are allowed ONLY for:
+- overlay drawing
+- trigger checks
+- visualization
+
+Rectangles must NEVER be used for aiming math.
+
+---
+
+## REQUIRED FIX (MANDATORY)
+
+In CalculateCoordinates():
+
+### ❌ REMOVE all aim math based on:
+- `LastDetectionBox`
+- `closestPrediction.Rectangle`
+- rectangle center calculations
+
+### ✅ REPLACE with screen-space logic:
+
+Use:
+```
+
+closestPrediction.ScreenCenterX
+closestPrediction.ScreenCenterY
+
+```
+
+These values:
+- are already in screen coordinates
+- already include detectionBox offsets
+- already include tracking prediction
+- are the single source of truth for aim
+
+### Example (conceptual):
+
+```
+
+detectedX = (int)closestPrediction.ScreenCenterX;
+detectedY = (int)closestPrediction.ScreenCenterY;
+
+```
+
+Apply user offsets (X/Y offset, percentages, alignment) **in screen space only**.
+
+---
+
+## IMPORTANT CLARIFICATION
+
+DO NOT:
+- Convert ScreenCenter back into YOLO space
+- Re-derive centers from rectangles
+- Subtract detectionBox.Left / Top for aiming
+
+Those conversions are ONLY for matching and overlay.
+
+---
+
+## HARD CONSTRAINTS
+
+- DO NOT modify ByteTracker logic
+- DO NOT modify KalmanPrediction
+- DO NOT modify ONNX inference or capture code
+- DO NOT change user settings behavior
+- Make minimal, surgical changes only

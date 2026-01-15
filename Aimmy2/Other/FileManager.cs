@@ -55,7 +55,7 @@ namespace Other
         private void CheckForRequiredFolders()
         {
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string[] dirs = ["bin\\models", "bin\\images", "bin\\labels", "bin\\configs", "bin\\anti_recoil_configs"];
+            string[] dirs = ["bin\\models", "bin\\images", "bin\\labels", "bin\\configs"];
 
             try
             {

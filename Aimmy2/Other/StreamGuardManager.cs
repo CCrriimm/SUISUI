@@ -7,9 +7,9 @@ using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace Aimmy2
+namespace Aimmy2.Other
 {
-    public static class StreamGuardHelper
+    public static class StreamGuardManager
     {
         #region Constants
         const uint WDA_NONE = 0;
@@ -22,40 +22,40 @@ namespace Aimmy2
 
         #region Private Fields
         private static bool _isEnabled = false;
-        private static HashSet<IntPtr> _protectedWindows = new();
+        private static HashSet<nint> _protectedWindows = new();
         private static bool _eventsAttached = false;
         private static System.Windows.Threading.DispatcherTimer _popupMonitorTimer;
         #endregion
 
         #region P/Invoke Declarations
-        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+        private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
         [DllImport("user32.dll")]
-        private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
+        private static extern bool SetWindowDisplayAffinity(nint hWnd, uint dwAffinity);
 
         [DllImport("user32.dll")]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        private static extern int GetWindowLong(nint hWnd, int nIndex);
 
         [DllImport("user32.dll")]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        private static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
 
         [DllImport("user32.dll")]
-        private static extern IntPtr GetParent(IntPtr hWnd);
+        private static extern nint GetParent(nint hWnd);
 
         [DllImport("user32.dll")]
-        private static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
+        private static extern nint GetAncestor(nint hWnd, uint gaFlags);
 
         [DllImport("user32.dll")]
-        private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+        private static extern bool EnumWindows(EnumWindowsProc enumProc, nint lParam);
 
         [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 
         [DllImport("user32.dll")]
-        private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+        private static extern int GetClassName(nint hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
 
         [DllImport("user32.dll")]
-        private static extern bool IsWindowVisible(IntPtr hWnd);
+        private static extern bool IsWindowVisible(nint hWnd);
         #endregion
 
         #region Window Protection
@@ -64,7 +64,7 @@ namespace Aimmy2
             if (window == null) return;
 
             var hWnd = new WindowInteropHelper(window).Handle;
-            if (hWnd == IntPtr.Zero)
+            if (hWnd == nint.Zero)
             {
                 if (enable && _isEnabled)
                 {
@@ -203,7 +203,7 @@ namespace Aimmy2
                     // Continue enumeration on error
                 }
                 return true;
-            }, IntPtr.Zero);
+            }, nint.Zero);
         }
         #endregion
 
@@ -215,8 +215,8 @@ namespace Aimmy2
             Application.Current.Activated -= OnAppActivated;
             Application.Current.Activated += OnAppActivated;
 
-            EventManager.RegisterClassHandler(typeof(Window), Window.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
-            EventManager.RegisterClassHandler(typeof(UserControl), UserControl.LoadedEvent, new RoutedEventHandler(OnUserControlLoaded));
+            EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
+            EventManager.RegisterClassHandler(typeof(UserControl), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnUserControlLoaded));
 
             StartPopupMonitoring();
             _eventsAttached = true;
@@ -306,7 +306,7 @@ namespace Aimmy2
             foreach (Window window in Application.Current.Windows)
             {
                 var hWnd = new WindowInteropHelper(window).Handle;
-                if (hWnd != IntPtr.Zero && !_protectedWindows.Contains(hWnd))
+                if (hWnd != nint.Zero && !_protectedWindows.Contains(hWnd))
                 {
                     ApplyToWindow(window, true);
                 }

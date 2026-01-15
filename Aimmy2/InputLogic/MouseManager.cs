@@ -15,7 +15,6 @@ namespace InputLogic
         private static readonly double ScreenHeight = WinAPICaller.ScreenHeight;
 
         private static DateTime LastClickTime = DateTime.MinValue;
-        private static int LastAntiRecoilClickTime = 0;
         private static bool isSpraying = false;
 
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
@@ -140,43 +139,6 @@ namespace InputLogic
             }
         }
         #endregion
-        public static void DoAntiRecoil()
-        {
-            int timeSinceLastClick = Math.Abs(DateTime.UtcNow.Millisecond - LastAntiRecoilClickTime);
-
-            if (timeSinceLastClick < Dictionary.AntiRecoilSettings["Fire Rate"])
-            {
-                return;
-            }
-
-            int xRecoil = (int)Dictionary.AntiRecoilSettings["X Recoil (Left/Right)"];
-            int yRecoil = (int)Dictionary.AntiRecoilSettings["Y Recoil (Up/Down)"];
-
-            switch (Dictionary.dropdownState["Mouse Movement Method"])
-            {
-                case "SendInput":
-                    SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, xRecoil, yRecoil);
-                    break;
-
-                case "LG HUB":
-                    LGMouse.Move(0, xRecoil, yRecoil, 0);
-                    break;
-
-                case "Razer Synapse (Require Razer Peripheral)":
-                    RZMouse.mouse_move(xRecoil, yRecoil, true);
-                    break;
-
-                case "ddxoft Virtual Input Driver":
-                    DdxoftMain.ddxoftInstance.movR!(xRecoil, yRecoil);
-                    break;
-
-                default:
-                    mouse_event(MOUSEEVENTF_MOVE, (uint)xRecoil, (uint)yRecoil, 0, 0);
-                    break;
-            }
-
-            LastAntiRecoilClickTime = DateTime.UtcNow.Millisecond;
-        }
 
         public static void MoveCrosshair(int detectedX, int detectedY)
         {

@@ -69,16 +69,14 @@ When you press the trigger binding, Aimmy will capture the screen and run the im
 2. DirectML + ONNX + YOLOv8 AI Detection Algorithm
 	- The use of these technologies allows Aimmy to be one of the most accurate and fastest Aim Alignment Mechanisms out there in the world
 3. Dynamic Customizability System
-	- Aimmy provides an interactive customizability system with various features that auto-updates the way Aimmy will aim as you customize. From AI Confidence, to FOV, to Anti-Recoil Adjustment, Aimmy makes it easy for anyone to tune their aim
+	- Aimmy provides an interactive customizability system with various features that auto-updates the way Aimmy will aim as you customize. From AI Confidence to FOV, Aimmy makes it easy for anyone to tune their aim
 4. Dynamic Visual System
 	- Aimmy contains a universal ESP system that will highlight the player detected by the AI. This is helpful for visually impaired users who have a hard time differentiating enemies, and for configuration creators attempting to debug their configurations.
-5. Adjustable Anti-Recoil
-	- Aimmy offers an incredibly customizable Anti-Recoil system that's designed to be easy to use. With features like recording your Fire Rate, setting your X and Y adjustment, and Configuration Switch Keybindings
-6. Mouse Movement Method
+5. Mouse Movement Method
 	- Aimmy grants you the right to switch between 5 Mouse Movement Methods depending on your Mouse Type and Game for better Aim Alignment
-7. Hotswappability
+6. Hotswappability
 	- Aimmy lets you hotswap models and configurations on the go. There is no need to reset Aimmy to make your changes
-8. Model and Configuration Store with Repository Support
+7. Model and Configuration Store with Repository Support
 	- Aimmy makes it easy to get any models and configurations you may ever need, and with repository support, you can get up to date with the latest models and configurations from your favorite creators
 
 ## Setup
@@ -94,7 +92,7 @@ Aimmy is written in C# using .NET 8 and WPF utilizing pre-existing libraries lik
 
 ![Example of Model switching](readme_assets/UI.gif?raw=true)
 
-Beyond the core functionality, Aimmy also adds some amazing additional features like Detection ESP and Anti-Recoil to help you tune your gaming experience however you like it.
+Beyond the core functionality, Aimmy also adds some amazing additional features like Detection ESP to help you tune your gaming experience however you like it.
 
 Aimmy comes pre-bundled with 2 well trained AI models with thousands of images each. 
 1. Phantom Forces

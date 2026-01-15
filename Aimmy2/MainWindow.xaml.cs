@@ -26,7 +26,6 @@ namespace Aimmy2
         private readonly Lazy<InputBindingManager> _bindingManager = new(() => new InputBindingManager());
         private static readonly Lazy<GithubManager> _githubManager = new(() => new GithubManager());
         private readonly Lazy<UI> _uiManager = new(() => new UI());
-        private readonly Lazy<AntiRecoilManager> _arManager = new(() => new AntiRecoilManager());
         private Lazy<FileManager>? _fileManager;
 
         // Windows
@@ -53,7 +52,6 @@ namespace Aimmy2
         public static DetectedPlayerWindow DPWindow => _dpWindow.Value;
         public static GithubManager githubManager => _githubManager.Value;
         public UI uiManager => _uiManager.Value;
-        public AntiRecoilManager arManager => _arManager.Value;
 
         #endregion
 
@@ -145,13 +143,6 @@ namespace Aimmy2
 
             EnsureRequiredFiles();
 
-            // Configuration loading has been moved to Window_Loaded before menu initialization
-            // Only load specific configurations that aren't related to UI state
-            await Task.Run(() =>
-            {
-                arManager.HoldDownLoad();
-            });
-
             SetupKeybindings();
             ConfigurePropertyChangers();
             ApplyInitialSettings();
@@ -235,9 +226,6 @@ namespace Aimmy2
 
             // Load these on UI thread since they might show notifications
             LoadConfig();
-            LoadAntiRecoilConfig();
-
-            arManager.HoldDownLoad(); // needs to be ran on ui thread or just cant be run via Task.Run -whip
             ApplyThemeColorFromConfig();
         }
 
@@ -265,9 +253,7 @@ namespace Aimmy2
             var keybinds = new[]
             {
                 "Aim Keybind", "Second Aim Keybind", "Dynamic FOV Keybind",
-                "Emergency Stop Keybind", "Model Switch Keybind",
-                "Anti Recoil Keybind", "Disable Anti Recoil Keybind",
-                "Gun 1 Key", "Gun 2 Key"
+                "Emergency Stop Keybind", "Model Switch Keybind"
             };
 
             foreach (var keybind in keybinds)
@@ -456,7 +442,6 @@ namespace Aimmy2
             SaveDictionary.WriteJSON(Dictionary.dropdownState, "bin\\dropdown.cfg");
             SaveDictionary.WriteJSON(Dictionary.colorState, "bin\\colors.cfg");
             SaveDictionary.WriteJSON(Dictionary.filelocationState, "bin\\filelocations.cfg");
-            SaveDictionary.WriteJSON(Dictionary.AntiRecoilSettings, "bin\\anti_recoil_configs\\Default.cfg");
         }
 
         #endregion
@@ -624,7 +609,7 @@ namespace Aimmy2
                 ["UI TopMost"] = () => Topmost = Dictionary.toggleState[title],
                 ["StreamGuard"] = () =>
                 {
-                    StreamGuardHelper.ApplyStreamGuardToAllWindows(Dictionary.toggleState[title]);
+                    StreamGuardManager.ApplyStreamGuardToAllWindows(Dictionary.toggleState[title]);
                 },
                 ["EMA Smoothening"] = () =>
                 {
@@ -645,13 +630,19 @@ namespace Aimmy2
             bool useXPercent = Dictionary.toggleState["X Axis Percentage Adjustment"];
             bool thresholdEnabled = Dictionary.toggleState["Sticky Aim"];
 
-            uiManager.S_StickyAimThreshold.Visibility = thresholdEnabled ? Visibility.Visible : Visibility.Collapsed;
+            // Null checks in case AimMenu hasn't been loaded yet
+            if (uiManager.S_StickyAimThreshold != null)
+                uiManager.S_StickyAimThreshold.Visibility = thresholdEnabled ? Visibility.Visible : Visibility.Collapsed;
 
-            uiManager.S_YOffset.Visibility = useYPercent ? Visibility.Collapsed : Visibility.Visible;
-            uiManager.S_YOffsetPercent.Visibility = useYPercent ? Visibility.Visible : Visibility.Collapsed;
+            if (uiManager.S_YOffset != null)
+                uiManager.S_YOffset.Visibility = useYPercent ? Visibility.Collapsed : Visibility.Visible;
+            if (uiManager.S_YOffsetPercent != null)
+                uiManager.S_YOffsetPercent.Visibility = useYPercent ? Visibility.Visible : Visibility.Collapsed;
 
-            uiManager.S_XOffset.Visibility = useXPercent ? Visibility.Collapsed : Visibility.Visible;
-            uiManager.S_XOffsetPercent.Visibility = useXPercent ? Visibility.Visible : Visibility.Collapsed;
+            if (uiManager.S_XOffset != null)
+                uiManager.S_XOffset.Visibility = useXPercent ? Visibility.Collapsed : Visibility.Visible;
+            if (uiManager.S_XOffsetPercent != null)
+                uiManager.S_XOffsetPercent.Visibility = useXPercent ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private Visibility GetToggleVisibility(string title, bool collapsed = false) =>
@@ -724,18 +715,7 @@ namespace Aimmy2
             {
                 ["Model Switch Keybind"] = HandleModelSwitch,
                 ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(true),
-                ["Emergency Stop Keybind"] = HandleEmergencyStop,
-                ["Anti Recoil Keybind"] = () => HandleAntiRecoil(true),
-                ["Disable Anti Recoil Keybind"] = DisableAntiRecoil,
-                ["Gun 1 Key"] = () => LoadGunConfig("Gun 1 Config"),
-                ["Gun 2 Key"] = () => LoadGunConfig("Gun 2 Config"),
-                // Keybinds for toggles
-                ["Aim Assist TKB"] = () => uiManager.T_AimAligner.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["Constant AI Tracking TKB"] = () => uiManager.T_ConstantAITracking.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["Predictions TKB"] = () => uiManager.T_Predictions.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["EMA Smoothening TKB"] = () => uiManager.T_EMASmoothing.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["Sticky Aim TKB"] = () => uiManager.T_StickyAim.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)),
-                ["Enable StreamGuard TKB"] = () => uiManager.T_StreamGuard.Reader.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))
+                ["Emergency Stop Keybind"] = HandleEmergencyStop
             };
 
             handlers.GetValueOrDefault(bindingId)?.Invoke();
@@ -745,8 +725,7 @@ namespace Aimmy2
         {
             var handlers = new Dictionary<string, Action>
             {
-                ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(false),
-                ["Anti Recoil Keybind"] = () => HandleAntiRecoil(false)
+                ["Dynamic FOV Keybind"] = () => ApplyDynamicFOV(false)
             };
 
             handlers.GetValueOrDefault(bindingId)?.Invoke();
@@ -822,43 +801,6 @@ namespace Aimmy2
                     UpdateToggleUI(toggles[i], false);
             }
             LogManager.Log(LogManager.LogLevel.Info, "[Emergency Stop Keybind] Disabled all AI features.", true);
-        }
-
-        private void HandleAntiRecoil(bool start)
-        {
-            if (!Dictionary.toggleState["Anti Recoil"]) return;
-
-            if (start)
-            {
-                arManager.IndependentMousePress = 0;
-                arManager.HoldDownTimer.Start();
-            }
-            else
-            {
-                arManager.HoldDownTimer.Stop();
-                arManager.IndependentMousePress = 0;
-            }
-        }
-
-        private void DisableAntiRecoil()
-        {
-            if (!Dictionary.toggleState["Anti Recoil"]) return;
-
-            Dictionary.toggleState["Anti Recoil"] = false;
-            UpdateToggleUI(uiManager.T_AntiRecoil!, false);
-
-            LogManager.Log(LogManager.LogLevel.Info, "[Disable Anti Recoil Keybind] Disabled Anti-Recoil.", true);
-        }
-
-        private void LoadGunConfig(string configKey)
-        {
-            if (Dictionary.toggleState["Enable Gun Switching Keybind"])
-            {
-                if (Dictionary.filelocationState.TryGetValue(configKey, out var configPath))
-                {
-                    LoadAntiRecoilConfig(configPath.ToString(), true);
-                }
-            }
         }
 
         #endregion
@@ -1007,7 +949,6 @@ namespace Aimmy2
         {
             var sliderConfigs = new[]
             {
-                ("Fire Rate", uiManager.S_FireRate, 1.0),
                 ("FOV Size", uiManager.S_FOVSize, 640.0),
                 ("Mouse Sensitivity (+/-)", uiManager.S_MouseSensitivity, 0.8),
                 ("Mouse Jitter", uiManager.S_MouseJitter, 0.0),
@@ -1084,66 +1025,6 @@ namespace Aimmy2
             ApplyDropdownValues(dropdownConfigs, Dictionary.dropdownState);
         }
 
-        public void LoadAntiRecoilConfig(string path = "bin\\anti_recoil_configs\\Default.cfg", bool loading_outside_startup = false)
-        {
-            try
-            {
-                // Ensure directory exists
-                string? directory = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                if (!File.Exists(path))
-                {
-                    // Create default config file
-                    SaveDictionary.WriteJSON(Dictionary.AntiRecoilSettings, path);
-
-                    // Only show notification if not during startup
-                    if (loading_outside_startup)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Info, "[Anti Recoil] Created default config.", true);
-                    }
-                    return;
-                }
-
-                SaveDictionary.LoadJSON(Dictionary.AntiRecoilSettings, path);
-
-                if (!loading_outside_startup || _menuControls["AimMenu"] == null || !_menuInitialized["AimMenu"])
-                    return;
-
-                ApplyAntiRecoilConfig();
-
-                // Only show notification if not during startup
-                if (loading_outside_startup)
-                {
-                    LogManager.Log(LogManager.LogLevel.Info, $"[Anti Recoil] Loaded \"{path}\"", true);
-                }
-            }
-            catch (Exception e)
-            {
-                // Only show error if not during startup
-                if (loading_outside_startup)
-                {
-                    LogManager.Log(LogManager.LogLevel.Error, $"Error loading anti-recoil config: {e.Message}", true);
-                }
-            }
-        }
-
-        private void ApplyAntiRecoilConfig()
-        {
-            var sliderConfigs = new[]
-            {
-                ("Hold Time", uiManager.S_HoldTime, 0.0),
-                ("Fire Rate", uiManager.S_FireRate, 1.0),
-                ("Y Recoil (Up/Down)", uiManager.S_YAntiRecoilAdjustment, 0.0),
-                ("X Recoil (Left/Right)", uiManager.S_XAntiRecoilAdjustment, 0.0)
-            };
-
-            ApplySliderValues(sliderConfigs, Dictionary.AntiRecoilSettings);
-        }
-
         private void ApplySliderValues((string key, ASlider? slider, double defaultValue)[] configs, Dictionary<string, dynamic> source)
         {
             foreach (var (key, slider, defaultValue) in configs)
@@ -1203,7 +1084,7 @@ namespace Aimmy2
         public AColorChanger AddColorChanger(StackPanel panel, string title) =>
             throw new NotImplementedException("Use control's internal implementation");
 
-        public ASlider AddSlider(StackPanel panel, string title, string label, double frequency, double buttonsteps, double min, double max, bool For_Anti_Recoil = false) =>
+        public ASlider AddSlider(StackPanel panel, string title, string label, double frequency, double buttonsteps, double min, double max) =>
             throw new NotImplementedException("Use control's internal implementation");
 
         public ADropdown AddDropdown(StackPanel panel, string title) =>

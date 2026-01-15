@@ -8,11 +8,19 @@ namespace Aimmy2.UILibrary
     /// </summary>
     public partial class ASlider : UserControl
     {
-        public ASlider(string Text, string NotifierText, double ButtonSteps)
+        public ASlider(string Text, string NotifierText, double ButtonSteps, string? tooltip = null)
         {
             InitializeComponent();
 
             SliderTitle.Content = Text;
+
+            if (!string.IsNullOrEmpty(tooltip))
+            {
+                var tt = new System.Windows.Controls.ToolTip { Content = tooltip };
+                if (TryFindResource("Tooltip") is System.Windows.Style style)
+                    tt.Style = style;
+                ToolTip = tt;
+            }
 
             Slider.ValueChanged += (s, e) =>
             {
