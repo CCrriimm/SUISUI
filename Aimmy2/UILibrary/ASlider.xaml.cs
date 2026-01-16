@@ -1,4 +1,5 @@
-﻿using System.Windows.Controls;
+﻿using Aimmy2.Theme;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace Aimmy2.UILibrary
@@ -29,6 +30,13 @@ namespace Aimmy2.UILibrary
 
             SubtractOne.Click += (s, e) => UpdateSliderValue(-ButtonSteps);
             AddOne.Click += (s, e) => UpdateSliderValue(ButtonSteps);
+
+            // Register buttons for theme updates when loaded
+            Loaded += (s, e) =>
+            {
+                ThemeManager.RegisterElement(SubtractOne);
+                ThemeManager.RegisterElement(AddOne);
+            };
         }
 
         private void UpdateSliderValue(double change)
