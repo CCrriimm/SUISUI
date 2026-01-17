@@ -68,6 +68,7 @@ namespace Aimmy2.Controls
 
             // Set visibility based on current model status (handles case where model loaded before panel opened)
             UpdateDynamicModelDropdownsVisibility(AIManager.CurrentModelIsDynamic);
+            UpdateTargetClassDropdown(_mainWindow!.uiManager.D_TargetClass!);
         }
 
         #region Minimize State Management
@@ -439,6 +440,12 @@ namespace Aimmy2.Controls
         private void UpdateTargetClassDropdown(ADropdown dropdown, Dictionary<int, string>? _classes = null)
         {
             if (dropdown?.DropdownBox == null) return;
+            var visibility = _classes != null && _classes.Count > 1
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            dropdown.Visibility = visibility;
+            _mainWindow!.uiManager.D_TargetClass!.Visibility = visibility;
+
             string? selection = (dropdown.DropdownBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
 
             var removedItems = dropdown.DropdownBox.Items.Cast<ComboBoxItem>()
