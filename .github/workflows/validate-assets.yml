@@ -1,0 +1,141 @@
+name: Validate models and configs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout PR code (safe, read-only)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Collect files changed by this PR
+      - name: Get changed files
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed_files.txt
+
+      # Detect whether models or configs were touched
+      - name: Detect asset changes
+        id: detect
+        run: |
+          MODELS=false
+          CONFIGS=false
+
+          if grep -qE '^models/.*\.onnx$' changed_files.txt; then
+            MODELS=true
+          fi
+
+          if grep -qE '^configs/.*\.cfg$' changed_files.txt; then
+            CONFIGS=true
+          fi
+
+          echo "models=$MODELS" >> $GITHUB_OUTPUT
+          echo "configs=$CONFIGS" >> $GITHUB_OUTPUT
+
+      # Python + ONNX only needed when validating models
+      - name: Set up Python
+        if: steps.detect.outputs.models == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ONNX
+        if: steps.detect.outputs.models == 'true'
+        run: pip install onnx
+
+      # Validate YOLOv8/v11 ONNX models
+      - name: Validate ONNX models
+        if: steps.detect.outputs.models == 'true'
+        run: |
+          set -e
+          python << 'EOF'
+          import onnx
+          import sys
+          import hashlib
+          from pathlib import Path
+
+          MIN_SIZE = 5 * 1024 * 1024
+          MAX_SIZE = 50 * 1024 * 1024
+
+          changed = Path("changed_files.txt").read_text().splitlines()
+          models = [f for f in changed if f.startswith("models/") and f.endswith(".onnx")]
+
+          if not models:
+              sys.exit("models directory modified but no .onnx file was added")
+
+          def dim(d):
+              return d.dim_value if d.dim_value > 0 else None
+
+          for model_path in models:
+              p = Path(model_path)
+              size = p.stat().st_size
+
+              if size < MIN_SIZE or size > MAX_SIZE:
+                  sys.exit(f"invalid model size: {p.name}")
+
+              model = onnx.load(p)
+              graph = model.graph
+
+              if len(graph.input) != 1:
+                  sys.exit("model must have exactly one input")
+
+              in_dims = [dim(d) for d in graph.input[0].type.tensor_type.shape.dim]
+              if len(in_dims) != 4 or in_dims[1] != 3:
+                  sys.exit("input must be [B,3,H,W]")
+
+              if len(graph.output) != 1:
+                  sys.exit("model must have exactly one output")
+
+              out_dims = [dim(d) for d in graph.output[0].type.tensor_type.shape.dim]
+              if len(out_dims) != 3:
+                  sys.exit("output must be [B,C+4,N]")
+
+              if out_dims[1] is not None and out_dims[1] < 5:
+                  sys.exit("output channel count must be >= 5")
+          EOF
+
+      # Validate config files when present
+      - name: Validate config files
+        if: steps.detect.outputs.configs == 'true'
+        run: |
+          set -e
+          CFGS=$(grep -E '^configs/.*\.cfg$' changed_files.txt)
+
+          for cfg in $CFGS; do
+            if [ ! -s "$cfg" ]; then
+              echo "empty config file: $cfg"
+              exit 1
+            fi
+
+            if ! grep -qi '\.onnx' "$cfg"; then
+              echo "config does not reference an onnx model: $cfg"
+              exit 1
+            fi
+          done
+
+      # Emit pass/fail result for trusted workflow
+      - name: Write validation result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "pass" > validation_result.txt
+          else
+            echo "fail" > validation_result.txt
+          fi
+
+      - name: Upload validation result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-result
+          path: validation_result.txt
