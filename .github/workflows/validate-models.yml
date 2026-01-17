@@ -16,24 +16,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Get changed files
+        id: changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100
+            });
+
+            const changed = files.map(f => f.filename);
+            const hasModels = changed.some(f => f.startsWith('models/') && f.endsWith('.onnx'));
+            const hasConfigs = changed.some(f => f.startsWith('configs/') && f.endsWith('.cfg'));
+
+            core.setOutput('files', changed.join('\n'));
+            core.setOutput('has_models', hasModels);
+            core.setOutput('has_configs', hasConfigs);
+
+            console.log('Changed files:', changed);
+            console.log('Has models:', hasModels);
+            console.log('Has configs:', hasConfigs);
+
       - name: Checkout PR content
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Get changed files
-        id: changes
-        run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Check what types of files changed
-          echo "$CHANGED" | grep -qE '^models/.*\.onnx$' && echo "has_models=true" >> $GITHUB_OUTPUT || echo "has_models=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep -qE '^configs/.*\.cfg$' && echo "has_configs=true" >> $GITHUB_OUTPUT || echo "has_configs=false" >> $GITHUB_OUTPUT
 
       - name: Check for empty PR
         if: steps.changes.outputs.has_models == 'false' && steps.changes.outputs.has_configs == 'false'
