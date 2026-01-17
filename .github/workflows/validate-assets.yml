@@ -3,12 +3,9 @@ name: Validate model submissions
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
-    paths:
-      - 'models/**'
-      - 'configs/**'
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -31,28 +28,58 @@ jobs:
             const changed = files.map(f => f.filename);
             const hasModels = changed.some(f => f.startsWith('models/') && f.endsWith('.onnx'));
             const hasConfigs = changed.some(f => f.startsWith('configs/') && f.endsWith('.cfg'));
+            const touchesAssets = changed.some(f => f.startsWith('models/') || f.startsWith('configs/'));
 
             core.setOutput('files', changed.join('\n'));
             core.setOutput('has_models', hasModels);
             core.setOutput('has_configs', hasConfigs);
+            core.setOutput('touches_assets', touchesAssets);
 
             console.log('Changed files:', changed);
-            console.log('Has models:', hasModels);
-            console.log('Has configs:', hasConfigs);
+
+      - name: Skip non-asset PRs
+        if: steps.changes.outputs.touches_assets == 'false'
+        run: echo "PR doesn't touch models/ or configs/ - skipping"
+
+      - name: Handle wrong file types
+        if: steps.changes.outputs.touches_assets == 'true' && steps.changes.outputs.has_models == 'false' && steps.changes.outputs.has_configs == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = `${{ steps.changes.outputs.files }}`.trim().split('\n');
+            const invalidFiles = files.filter(f => f.startsWith('models/') || f.startsWith('configs/'));
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['invalid']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ❌ Invalid File Types\n\nNo valid \`.onnx\` or \`.cfg\` files found.\n\n**Files uploaded:** ${invalidFiles.map(f => \`\\\`${f}\\\`\`).join(', ')}\n\n**Required:**\n- Models: \`.onnx\` files in \`models/\` folder\n- Configs: \`.cfg\` files in \`configs/\` folder\n\nThis PR has been automatically closed.`
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+
+            core.setFailed('Invalid file types');
 
       - name: Checkout PR content
+        if: steps.changes.outputs.has_models == 'true' || steps.changes.outputs.has_configs == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Check for empty PR
-        if: steps.changes.outputs.has_models == 'false' && steps.changes.outputs.has_configs == 'false'
-        run: |
-          echo "::error::PR modifies models/ or configs/ but contains no .onnx or .cfg files"
-          exit 1
-
       - name: Set up Python
-        if: steps.changes.outputs.has_models == 'true'
+        if: steps.changes.outputs.has_models == 'true' || steps.changes.outputs.has_configs == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -170,15 +197,44 @@ jobs:
       - name: Validate configs
         if: steps.changes.outputs.has_configs == 'true'
         run: |
-          echo "${{ steps.changes.outputs.files }}" | grep -E '^configs/.*\.cfg$' | while read cfg; do
-            echo "Validating: $cfg"
-            [ ! -s "$cfg" ] && echo "::error::Empty config: $cfg" && exit 1
-            grep -qi '\.onnx' "$cfg" || { echo "::error::Config must reference .onnx file: $cfg"; exit 1; }
-            echo "  ✓ Valid"
-          done
+          python << 'EOF'
+          import json
+          import sys
+          from pathlib import Path
+
+          changed = """${{ steps.changes.outputs.files }}""".strip().split("\n")
+          configs = [f for f in changed if f.startswith("configs/") and f.endswith(".cfg")]
+
+          for cfg_path in configs:
+              p = Path(cfg_path)
+              print(f"Validating: {p.name}")
+
+              if not p.exists():
+                  print(f"::error::Config file not found: {p}")
+                  sys.exit(1)
+
+              if p.stat().st_size == 0:
+                  print(f"::error::Empty config file: {p.name}")
+                  sys.exit(1)
+
+              try:
+                  data = json.loads(p.read_text())
+              except json.JSONDecodeError as e:
+                  print(f"::error::Invalid JSON in {p.name}: {e}")
+                  sys.exit(1)
+
+              if not isinstance(data, dict):
+                  print(f"::error::Config must be a JSON object: {p.name}")
+                  sys.exit(1)
+
+              print(f"  Keys: {len(data)}")
+              print(f"  ✓ Valid config")
+
+          print(f"✓ {len(configs)} config(s) validated")
+          EOF
 
       - name: Apply labels
-        if: always()
+        if: always() && (steps.changes.outputs.has_models == 'true' || steps.changes.outputs.has_configs == 'true')
         uses: actions/github-script@v7
         with:
           script: |
@@ -290,5 +346,42 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body
+              });
+            }
+
+      - name: Auto-merge valid submissions
+        if: success() && (steps.changes.outputs.has_models == 'true' || steps.changes.outputs.has_configs == 'true')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+
+            // Merge the PR
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: `Add community model/config (#${prNumber})`
+              });
+
+              console.log(`PR #${prNumber} merged successfully`);
+
+              // Add merged comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `## ✅ Merged!\n\nThank you for your contribution! Your submission has been validated and automatically merged.`
+              });
+            } catch (e) {
+              console.log(`Could not auto-merge: ${e.message}`);
+              // If merge fails (conflicts, branch protection, etc), just leave it for manual review
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: ['needs-manual-merge']
               });
             }
