@@ -423,7 +423,7 @@ namespace Aimmy2.AILogic
             {
                 var metadata = _onnxModel.ModelMetadata;
 
-                if (metadata != null && 
+                if (metadata != null &&
                     metadata.CustomMetadataMap.TryGetValue("names", out string? value) &&
                     !string.IsNullOrEmpty(value))
                 {
@@ -952,7 +952,7 @@ namespace Aimmy2.AILogic
                     outputTensor = results[0].AsTensor<float>();
                 }
 
-                if(outputTensor == null)
+                if (outputTensor == null)
                 {
                     Log(LogLevel.Error, "Model inference returned null output tensor.", true, 2000);
                     SaveFrame(frame);

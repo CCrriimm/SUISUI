@@ -38,7 +38,7 @@ namespace Other
             ConfigListBox.SelectionChanged += ConfigListBox_SelectionChanged;
 
             ModelListBox.AllowDrop = true;
-            ModelListBox.DragOver += ModelListBox_DragOver; 
+            ModelListBox.DragOver += ModelListBox_DragOver;
             ModelListBox.Drop += ModelListBox_DragDrop;
 
             ConfigListBox.AllowDrop = true;

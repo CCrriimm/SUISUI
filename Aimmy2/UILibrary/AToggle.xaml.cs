@@ -1,8 +1,8 @@
-﻿using AimmyWPF.Class;
+﻿using Aimmy2.Theme;
+using AimmyWPF.Class;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using Aimmy2.Theme;
 
 namespace Aimmy2.UILibrary
 {

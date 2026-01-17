@@ -1,6 +1,4 @@
 ﻿using Aimmy2.Theme;
-using Newtonsoft.Json.Linq;
-using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -11,7 +9,6 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Visuality;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ScrollBar;
 
 namespace Aimmy2.UILibrary
 {
