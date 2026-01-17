@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
-using System.ComponentModel;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace Aimmy2.Other
@@ -141,7 +138,8 @@ namespace Aimmy2.Other
             }
             else if (enable)
             {
-                userControl.Loaded += (s, e) => {
+                userControl.Loaded += (s, e) =>
+                {
                     Window delayedWindow = FindParentWindow(userControl);
                     if (delayedWindow != null)
                     {

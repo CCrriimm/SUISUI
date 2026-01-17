@@ -1,3 +1,5 @@
+using Aimmy2.Theme;
+using Other;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Windows;
@@ -6,8 +8,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using Aimmy2.Theme;
-using Other;
 
 namespace Aimmy2.Controls
 {

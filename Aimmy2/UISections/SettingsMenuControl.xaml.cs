@@ -1,9 +1,6 @@
 ﻿using Aimmy2.AILogic;
 using Aimmy2.Class;
-using Aimmy2.MouseMovementLibraries.GHubSupport;
 using Aimmy2.UILibrary;
-using MouseMovementLibraries.ddxoftSupport;
-using MouseMovementLibraries.RazerSupport;
 using Other;
 using System.Windows;
 using System.Windows.Controls;

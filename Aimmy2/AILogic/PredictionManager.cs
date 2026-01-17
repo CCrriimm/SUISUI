@@ -1,6 +1,4 @@
 ﻿using Aimmy2.Class;
-using Class;
-using System.Runtime.CompilerServices;
 
 namespace AILogic
 {
