@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout PR code (safe, read-only)
+      # Checkout PR code (read-only, fork-safe)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -53,7 +53,7 @@ jobs:
         if: steps.detect.outputs.models == 'true'
         run: pip install onnx
 
-      # Validate YOLOv8/v11 ONNX models
+      # Validate YOLOv8 / YOLOv11 ONNX models
       - name: Validate ONNX models
         if: steps.detect.outputs.models == 'true'
         run: |
@@ -61,7 +61,6 @@ jobs:
           python << 'EOF'
           import onnx
           import sys
-          import hashlib
           from pathlib import Path
 
           MIN_SIZE = 5 * 1024 * 1024
@@ -123,15 +122,13 @@ jobs:
             fi
           done
 
-      # Emit pass/fail result for trusted workflow
+      # Write structured validation result for labeling workflow
       - name: Write validation result
         if: always()
         run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "pass" > validation_result.txt
-          else
-            echo "fail" > validation_result.txt
-          fi
+          echo "models=${{ steps.detect.outputs.models }}" > validation_result.txt
+          echo "configs=${{ steps.detect.outputs.configs }}" >> validation_result.txt
+          echo "status=${{ job.status }}" >> validation_result.txt
 
       - name: Upload validation result
         if: always()
