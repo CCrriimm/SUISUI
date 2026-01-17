@@ -1,0 +1,156 @@
+name: Validate model submissions
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'models/**'
+      - 'configs/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR content
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changes
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Check what types of files changed
+          echo "$CHANGED" | grep -qE '^models/.*\.onnx$' && echo "has_models=true" >> $GITHUB_OUTPUT || echo "has_models=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep -qE '^configs/.*\.cfg$' && echo "has_configs=true" >> $GITHUB_OUTPUT || echo "has_configs=false" >> $GITHUB_OUTPUT
+
+      - name: Check for empty PR
+        if: steps.changes.outputs.has_models == 'false' && steps.changes.outputs.has_configs == 'false'
+        run: |
+          echo "::error::PR modifies models/ or configs/ but contains no .onnx or .cfg files"
+          exit 1
+
+      - name: Set up Python
+        if: steps.changes.outputs.has_models == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ONNX
+        if: steps.changes.outputs.has_models == 'true'
+        run: pip install onnx
+
+      - name: Validate ONNX models
+        id: validate
+        if: steps.changes.outputs.has_models == 'true'
+        run: |
+          python << 'EOF'
+          import onnx, sys, hashlib
+          from pathlib import Path
+
+          MIN_SIZE = 5 * 1024 * 1024
+          MAX_SIZE = 50 * 1024 * 1024
+
+          changed = """${{ steps.changes.outputs.files }}""".strip().split("\n")
+          models = [f for f in changed if f.startswith("models/") and f.endswith(".onnx")]
+
+          def dim(d):
+              return d.dim_value if d.dim_value > 0 else None
+
+          for model_path in models:
+              p = Path(model_path)
+              print(f"Validating: {p.name}")
+
+              if not p.exists():
+                  sys.exit(f"::error::File not found: {p}")
+
+              size = p.stat().st_size
+              if size < MIN_SIZE or size > MAX_SIZE:
+                  sys.exit(f"::error::Size {size/1024/1024:.1f}MB outside 5-50MB range: {p.name}")
+
+              try:
+                  model = onnx.load(str(p))
+              except Exception as e:
+                  sys.exit(f"::error::Invalid ONNX file: {p.name} - {e}")
+
+              g = model.graph
+              if len(g.input) != 1:
+                  sys.exit(f"::error::Must have 1 input (YOLO format): {p.name}")
+
+              in_dims = [dim(d) for d in g.input[0].type.tensor_type.shape.dim]
+              if len(in_dims) != 4 or in_dims[1] != 3:
+                  sys.exit(f"::error::Input must be [B,3,H,W]: {p.name}")
+
+              if len(g.output) != 1:
+                  sys.exit(f"::error::Must have 1 output (YOLO format): {p.name}")
+
+              out_dims = [dim(d) for d in g.output[0].type.tensor_type.shape.dim]
+              if len(out_dims) != 3 or (out_dims[1] and out_dims[1] < 5):
+                  sys.exit(f"::error::Output must be [B,>=5,N]: {p.name}")
+
+              print(f"  ✓ Valid ({size/1024/1024:.1f}MB, input={in_dims}, output={out_dims})")
+
+          print(f"✓ {len(models)} model(s) validated")
+          EOF
+
+      - name: Validate configs
+        if: steps.changes.outputs.has_configs == 'true'
+        run: |
+          echo "${{ steps.changes.outputs.files }}" | grep -E '^configs/.*\.cfg$' | while read cfg; do
+            echo "Validating: $cfg"
+            [ ! -s "$cfg" ] && echo "::error::Empty config: $cfg" && exit 1
+            grep -qi '\.onnx' "$cfg" || { echo "::error::Config must reference .onnx file: $cfg"; exit 1; }
+            echo "  ✓ Valid"
+          done
+
+      - name: Apply labels
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const hasModels = '${{ steps.changes.outputs.has_models }}' === 'true';
+            const hasConfigs = '${{ steps.changes.outputs.has_configs }}' === 'true';
+            const passed = '${{ job.status }}' === 'success';
+
+            const add = [];
+            const remove = [];
+
+            if (hasModels) {
+              add.push(passed ? 'model:valid' : 'model:invalid');
+              remove.push(passed ? 'model:invalid' : 'model:valid');
+            }
+            if (hasConfigs) {
+              add.push(passed ? 'config:valid' : 'config:invalid');
+              remove.push(passed ? 'config:invalid' : 'config:valid');
+            }
+
+            for (const label of remove) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: label
+                });
+              } catch (e) {}
+            }
+
+            if (add.length) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: add
+              });
+            }
