@@ -48,6 +48,7 @@ jobs:
           script: |
             const files = `${{ steps.changes.outputs.files }}`.trim().split('\n');
             const invalidFiles = files.filter(f => f.startsWith('models/') || f.startsWith('configs/'));
+            const fileList = invalidFiles.map(f => '`' + f + '`').join(', ');
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
@@ -60,7 +61,17 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## ❌ Invalid File Types\n\nNo valid \`.onnx\` or \`.cfg\` files found.\n\n**Files uploaded:** ${invalidFiles.map(f => \`\\\`${f}\\\`\`).join(', ')}\n\n**Required:**\n- Models: \`.onnx\` files in \`models/\` folder\n- Configs: \`.cfg\` files in \`configs/\` folder\n\nThis PR has been automatically closed.`
+              body: `## ❌ Invalid File Types
+
+No valid \`.onnx\` or \`.cfg\` files found.
+
+**Files uploaded:** ${fileList}
+
+**Required:**
+- Models: \`.onnx\` files in \`models/\` folder
+- Configs: \`.cfg\` files in \`configs/\` folder
+
+This PR has been automatically closed.`
             });
 
             await github.rest.pulls.update({
