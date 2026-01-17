@@ -40,6 +40,9 @@ namespace Class
         public ASlider? S_XOffset { get; set; }
         public ASlider? S_XOffsetPercent { get; set; }
         public ASlider? S_EMASmoothing { get; set; }
+        public ASlider? S_KalmanLeadTime { get; set; }
+        public ASlider? S_WiseTheFoxLeadTime { get; set; }
+        public ASlider? S_ShalloeLeadMultiplier { get; set; }
 
         // Triggerbot
         public ATitle? AT_TriggerBot { get; set; }

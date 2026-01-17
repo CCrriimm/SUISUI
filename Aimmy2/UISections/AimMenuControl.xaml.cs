@@ -138,6 +138,7 @@ namespace Aimmy2.Controls
             SaveMinimizeStatesToGlobal();
         }
 
+
         #endregion
 
         #region Menu Section Loaders
@@ -188,6 +189,11 @@ namespace Aimmy2.Controls
                 }, tooltip: "Always track targets without holding a key. When off, you must hold the aim keybind.")
                 .AddToggle("Sticky Aim", t => uiManager.T_StickyAim = t,
                     tooltip: "Lock onto a target until it moves out of range instead of switching targets.")
+                .AddSlider("Sticky Aim Threshold", "Pixels", 1, 1, 0, 100, s =>
+                {
+                    uiManager.S_StickyAimThreshold = s;
+                    s.Visibility = System.Windows.Visibility.Collapsed; // Hidden until Sticky Aim is enabled
+                }, tooltip: "How far a target must move before switching to a new one. Higher = stays locked longer.")
                 .AddKeyChanger("Aim Keybind", k => uiManager.C_Keybind = k,
                     tooltip: "The key you hold to activate aim assist.")
                 .AddKeyChanger("Second Aim Keybind", tooltip: "An alternate key to activate aim assist.")
@@ -295,17 +301,6 @@ namespace Aimmy2.Controls
                 }, tooltip: "How fast the aim moves. Lower = faster and snappier, higher = slower and smoother.")
                 .AddSlider("Mouse Jitter", "Jitter", 1, 1, 0, 15, s => uiManager.S_MouseJitter = s,
                     tooltip: "Adds random small movements to make aim look more human-like.")
-                .AddSlider("Sticky Aim Threshold", "Pixels", 1, 1, 0, 100, s =>
-                {
-                    uiManager.S_StickyAimThreshold = s;
-                    var value = s.Slider.Value;
-                    if (value <= 10)
-                    {
-                        LogManager.Log(LogManager.LogLevel.Warning,
-                            "The threshold you have set may cause sticky aim to not work as intended, please increase if you suffer from this issue.\nINFO: The Sticky aim threshold is how many pixels it will take until it realizes the target is gone and moves on to another target",
-                            true, 10000);
-                    }
-                }, tooltip: "How far a target must move before switching to a new one. Higher = stays locked longer.")
                 .AddSlider("Y Offset (Up/Down)", "Offset", 1, 1, -150, 150, s => uiManager.S_YOffset = s,
                     tooltip: "Move aim point up (negative) or down (positive) in pixels.")
                 .AddSlider("Y Offset (%)", "Percent", 1, 1, 0, 100, s => uiManager.S_YOffsetPercent = s,
@@ -336,7 +331,25 @@ namespace Aimmy2.Controls
                     _mainWindow.AddDropdownItem(d, "Kalman Filter");
                     _mainWindow.AddDropdownItem(d, "Shall0e's Prediction");
                     _mainWindow.AddDropdownItem(d, "wisethef0x's EMA Prediction");
+
+                    // Update slider visibility when prediction method changes
+                    d.DropdownBox.SelectionChanged += (s, e) => _mainWindow?.UpdatePredictionSliderVisibility();
                 }, tooltip: "The algorithm used to predict target movement. Try different ones to see what works best.")
+                .AddSlider("Kalman Lead Time", "Seconds", 0.01, 0.01, 0.02, 0.30, s =>
+                {
+                    uiManager.S_KalmanLeadTime = s;
+                    s.Visibility = System.Windows.Visibility.Collapsed; // Hidden by default
+                }, tooltip: "How far ahead to predict target position. Higher = more prediction, may overshoot.")
+                .AddSlider("WiseTheFox Lead Time", "Seconds", 0.01, 0.01, 0.02, 0.30, s =>
+                {
+                    uiManager.S_WiseTheFoxLeadTime = s;
+                    s.Visibility = System.Windows.Visibility.Collapsed;
+                }, tooltip: "How far ahead to predict target position. Higher = more prediction, may overshoot.")
+                .AddSlider("Shalloe Lead Multiplier", "Frames", 0.5, 0.5, 1, 10, s =>
+                {
+                    uiManager.S_ShalloeLeadMultiplier = s;
+                    s.Visibility = System.Windows.Visibility.Collapsed;
+                }, tooltip: "How many frames ahead to predict. Higher = more prediction, may overshoot.")
                 .AddToggle("EMA Smoothening", t => uiManager.T_EMASmoothing = t,
                     tooltip: "Smooth out aim movements to reduce jitter and make tracking steadier.")
                 .AddSlider("EMA Smoothening", "Amount", 0.01, 0.01, 0.01, 1, s =>
@@ -425,16 +438,16 @@ namespace Aimmy2.Controls
                         }
 
                         Color initialColor = Colors.White;
-                        if (c.Reader.Background is SolidColorBrush scb)
+                        if (c.ColorChangingBorder.Background is SolidColorBrush scb)
                             initialColor = scb.Color;
                         fovColorPickerInstance = new UISections.ColorPicker(initialColor, "FOV Color");
 
                         fovColorPickerInstance.ColorChanged += (color) =>
                         {
-                            if (uiManager?.CC_FOVColor?.Reader != null)
-                            {
-                                uiManager.CC_FOVColor.Reader.Background = new SolidColorBrush(color);
-                            }
+                            // Update the color square
+                            c.ColorChangingBorder.Background = new SolidColorBrush(color);
+                            // Save to dictionary for persistence
+                            Dictionary.colorState["FOV Color"] = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
                             PropertyChanger.PostColor(color);
                         };
 
@@ -524,16 +537,16 @@ namespace Aimmy2.Controls
                         }
 
                         Color initialColor = Colors.White;
-                        if (c.Reader.Background is SolidColorBrush scb)
+                        if (c.ColorChangingBorder.Background is SolidColorBrush scb)
                             initialColor = scb.Color;
                         colorPickerInstance = new UISections.ColorPicker(initialColor, "ESP Color");
 
                         colorPickerInstance.ColorChanged += (color) =>
                         {
-                            if (uiManager?.CC_DetectedPlayerColor?.Reader != null)
-                            {
-                                uiManager.CC_DetectedPlayerColor.Reader.Background = new SolidColorBrush(color);
-                            }
+                            // Update the color square
+                            c.ColorChangingBorder.Background = new SolidColorBrush(color);
+                            // Save to dictionary for persistence
+                            Dictionary.colorState["Detected Player Color"] = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
                             PropertyChanger.PostDPColor(color);
                         };
 

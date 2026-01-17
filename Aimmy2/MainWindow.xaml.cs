@@ -959,7 +959,10 @@ namespace Aimmy2
                 ("Y Offset (%)", uiManager.S_YOffsetPercent, 0.0),
                 ("X Offset (%)", uiManager.S_XOffsetPercent, 0.0),
                 ("Auto Trigger Delay", uiManager.S_AutoTriggerDelay, 0.25),
-                ("AI Minimum Confidence", uiManager.S_AIMinimumConfidence, 50.0)
+                ("AI Minimum Confidence", uiManager.S_AIMinimumConfidence, 50.0),
+                ("Kalman Lead Time", uiManager.S_KalmanLeadTime, 0.10),
+                ("WiseTheFox Lead Time", uiManager.S_WiseTheFoxLeadTime, 0.15),
+                ("Shalloe Lead Multiplier", uiManager.S_ShalloeLeadMultiplier, 3.0)
             };
 
             ApplySliderValues(sliderConfigs, Dictionary.sliderSettings);
@@ -1023,6 +1026,39 @@ namespace Aimmy2
             };
 
             ApplyDropdownValues(dropdownConfigs, Dictionary.dropdownState);
+
+            // Update prediction slider visibility based on selected method
+            UpdatePredictionSliderVisibility();
+        }
+
+        public void UpdatePredictionSliderVisibility()
+        {
+            string selectedMethod = Dictionary.dropdownState["Prediction Method"];
+
+            // Hide all prediction sliders first
+            if (uiManager.S_KalmanLeadTime != null)
+                uiManager.S_KalmanLeadTime.Visibility = Visibility.Collapsed;
+            if (uiManager.S_WiseTheFoxLeadTime != null)
+                uiManager.S_WiseTheFoxLeadTime.Visibility = Visibility.Collapsed;
+            if (uiManager.S_ShalloeLeadMultiplier != null)
+                uiManager.S_ShalloeLeadMultiplier.Visibility = Visibility.Collapsed;
+
+            // Show the relevant slider based on selected method
+            switch (selectedMethod)
+            {
+                case "Kalman Filter":
+                    if (uiManager.S_KalmanLeadTime != null)
+                        uiManager.S_KalmanLeadTime.Visibility = Visibility.Visible;
+                    break;
+                case "Shall0e's Prediction":
+                    if (uiManager.S_ShalloeLeadMultiplier != null)
+                        uiManager.S_ShalloeLeadMultiplier.Visibility = Visibility.Visible;
+                    break;
+                case "wisethef0x's EMA Prediction":
+                    if (uiManager.S_WiseTheFoxLeadTime != null)
+                        uiManager.S_WiseTheFoxLeadTime.Visibility = Visibility.Visible;
+                    break;
+            }
         }
 
         private void ApplySliderValues((string key, ASlider? slider, double defaultValue)[] configs, Dictionary<string, dynamic> source)

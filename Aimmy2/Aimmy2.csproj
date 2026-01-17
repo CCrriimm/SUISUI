@@ -28,8 +28,8 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
     <Platforms>AnyCPU;x64</Platforms>	  <Product></Product>
-	  <Title></Title>
-	  <AssemblyName>CouldBeAimmyV2</AssemblyName>
+    <Title></Title>
+    <AssemblyName>CouldBeAimmyV2</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SignAssembly>False</SignAssembly>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
@@ -59,7 +59,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Accord.Statistics" Version="3.8.0" />
     <PackageReference Include="AntWpf" Version="1.0.5" />
     <PackageReference Include="Costura.Fody" Version="6.0.0">
       <PrivateAssets>all</PrivateAssets>

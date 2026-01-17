@@ -73,17 +73,23 @@ namespace Aimmy2.AILogic
         // For Auto-Labelling Data System
         private bool PlayerFound = false;
 
-        // Sticky-Aim 
+        // Sticky-Aim
         private Prediction? _currentTarget = null;
         private int _consecutiveFramesWithoutTarget = 0;
         private const int MAX_FRAMES_WITHOUT_TARGET = 3; // Allow 3 frames of target loss
 
+        // Enhanced Sticky Aim State
+        private float _lastTargetVelocityX = 0f;
+        private float _lastTargetVelocityY = 0f;
+        private float _targetLockScore = 0f;           // Accumulated "stickiness" score
+        private const float LOCK_SCORE_DECAY = 0.85f;  // Decay per frame when target not matched
+        private const float LOCK_SCORE_GAIN = 15f;     // Gain per frame when target matched
+        private const float MAX_LOCK_SCORE = 100f;     // Maximum accumulated score
+        private const float REFERENCE_TARGET_SIZE = 10000f; // Reference area for "close" targets (approx 100x100)
+        private int _framesWithoutMatch = 0;           // Consecutive frames where current target wasn't found
+
         private double CenterXTranslated = 0;
         private double CenterYTranslated = 0;
-
-        // For Shall0e's Prediction Method
-        private int PrevX = 0;
-        private int PrevY = 0;
 
         // Benchmarking
         private int iterationCount = 0;
@@ -835,19 +841,11 @@ namespace Aimmy2.AILogic
                     break;
 
                 case "Shall0e's Prediction":
-                    ShalloePredictionV2.xValues.Add(detectedX - PrevX);
-                    ShalloePredictionV2.yValues.Add(detectedY - PrevY);
+                    // Update position (calculates velocity internally)
+                    ShalloePredictionV2.UpdatePosition(detectedX, detectedY);
 
-                    if (ShalloePredictionV2.xValues.Count > 5)
-                    {
-                        ShalloePredictionV2.xValues.RemoveAt(0);
-                        ShalloePredictionV2.yValues.RemoveAt(0);
-                    }
-
-                    MouseManager.MoveCrosshair(ShalloePredictionV2.GetSPX(), detectedY);
-
-                    PrevX = detectedX;
-                    PrevY = detectedY;
+                    // Get predicted position
+                    MouseManager.MoveCrosshair(ShalloePredictionV2.GetSPX(), ShalloePredictionV2.GetSPY());
                     break;
 
                 case "wisethef0x's EMA Prediction":
@@ -861,7 +859,8 @@ namespace Aimmy2.AILogic
                     wtfpredictionManager.UpdateDetection(wtfdetection);
                     var wtfpredictedPosition = wtfpredictionManager.GetEstimatedPosition();
 
-                    MouseManager.MoveCrosshair(wtfpredictedPosition.X, detectedY);
+                    // Use both predicted X and Y
+                    MouseManager.MoveCrosshair(wtfpredictedPosition.X, wtfpredictedPosition.Y);
                     break;
             }
         }
@@ -1010,64 +1009,185 @@ namespace Aimmy2.AILogic
             }
         }
 
-        // sticky aim needs to be refined
-        // this is a very basic implementation of sticky aim, it will be improved in the future.
-        /// TODO: REFINE linear search to find closest target based on mouse position / current target (?)
-        /// e.g whatever is closer to the current target
         private Prediction? HandleStickyAim(Prediction? bestCandidate, List<Prediction> KDPredictions)
         {
             if (!Dictionary.toggleState["Sticky Aim"])
             {
-                _currentTarget = bestCandidate; // update anyway
+                _currentTarget = bestCandidate;
+                ResetStickyAimState();
                 return bestCandidate;
             }
 
-            float threshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
-            float thresholdSqr = threshold * threshold;
-
+            // No detections available
             if (bestCandidate == null || KDPredictions == null || KDPredictions.Count == 0)
             {
-                if (_currentTarget != null)
-                {
-                    if (++_consecutiveFramesWithoutTarget > MAX_FRAMES_WITHOUT_TARGET)
-                    {
-                        return null;
-                    }
-
-                    // keep previous target while within grace period
-                    return _currentTarget;
-                }
-                return null;
+                return HandleNoDetections();
             }
-            // reset consecutive frames since we have a target
+
             _consecutiveFramesWithoutTarget = 0;
 
-            if (_currentTarget != null)
+            // Screen center (where user is aiming)
+            float screenCenterX = IMAGE_SIZE / 2f;
+            float screenCenterY = IMAGE_SIZE / 2f;
+
+            // STEP 1: Find what the user is aiming at (closest to crosshair)
+            Prediction? aimTarget = null;
+            float nearestToCrosshairDistSq = float.MaxValue;
+
+            foreach (var candidate in KDPredictions)
             {
-                Prediction? matchedTarget = null;
-                float minSqrDistance = float.MaxValue;
-
-                foreach (var candidate in KDPredictions)
+                float distSq = GetDistanceSq(candidate.ScreenCenterX, candidate.ScreenCenterY, screenCenterX, screenCenterY);
+                if (distSq < nearestToCrosshairDistSq)
                 {
-                    float sqrDistance = Distance(_currentTarget, candidate);
-                    if (sqrDistance < minSqrDistance && sqrDistance < thresholdSqr)
-                    {
-                        minSqrDistance = sqrDistance;
-                        matchedTarget = candidate;
-                    }
-                }
-
-                if (matchedTarget != null)
-                {
-                    _consecutiveFramesWithoutTarget = 0;
-                    _currentTarget = matchedTarget;
-                    return matchedTarget;
+                    nearestToCrosshairDistSq = distSq;
+                    aimTarget = candidate;
                 }
             }
 
-            // acquire a new target
-            _currentTarget = bestCandidate;
-            return bestCandidate;
+            if (aimTarget == null)
+            {
+                return HandleNoDetections();
+            }
+
+            // No current target - acquire what user is aiming at
+            if (_currentTarget == null)
+            {
+                return AcquireNewTarget(aimTarget);
+            }
+
+            // STEP 2: Is the aim target the SAME as our current target?
+            float lastX = _currentTarget.ScreenCenterX;
+            float lastY = _currentTarget.ScreenCenterY;
+            float targetArea = _currentTarget.Rectangle.Width * _currentTarget.Rectangle.Height;
+            float targetSize = MathF.Sqrt(targetArea);
+            float sizeFactor = GetSizeFactor(targetArea);
+
+            // Distance from aim target to our current target's last position
+            float aimToCurrentDistSq = GetDistanceSq(aimTarget.ScreenCenterX, aimTarget.ScreenCenterY, lastX, lastY);
+
+            // Tracking radius based on target size - larger targets have larger radius
+            float trackingRadius = targetSize * 3f;
+            float trackingRadiusSq = trackingRadius * trackingRadius;
+
+            // Check size similarity
+            float aimTargetArea = aimTarget.Rectangle.Width * aimTarget.Rectangle.Height;
+            float sizeRatio = MathF.Min(targetArea, aimTargetArea) / MathF.Max(targetArea, aimTargetArea);
+
+            // Is the aim target the same as our current target?
+            // Same if: close to last position AND similar size
+            bool isSameTarget = (aimToCurrentDistSq < trackingRadiusSq) && (sizeRatio > 0.5f);
+
+            if (isSameTarget)
+            {
+                // User is still aiming at current target - update and continue
+                _framesWithoutMatch = 0;
+                UpdateVelocity(aimTarget, sizeFactor);
+                _targetLockScore = Math.Min(MAX_LOCK_SCORE, _targetLockScore + LOCK_SCORE_GAIN);
+                _currentTarget = aimTarget;
+                return aimTarget;
+            }
+
+            // STEP 3: User is aiming at a DIFFERENT target
+            // But we need hysteresis - don't switch on single-frame jitter
+            _framesWithoutMatch++;
+
+            // Quick switch if aim target is very close to crosshair (user clearly aiming at it)
+            float stickyThreshold = (float)Dictionary.sliderSettings["Sticky Aim Threshold"];
+            bool aimTargetVeryCentered = nearestToCrosshairDistSq < (stickyThreshold * stickyThreshold * 0.25f);
+
+            if (aimTargetVeryCentered || _framesWithoutMatch >= 3)
+            {
+                // User has clearly moved to new target - switch
+                return AcquireNewTarget(aimTarget);
+            }
+
+            // Not ready to switch yet - return null to avoid flicking
+            // (Don't return old target position, don't return new target position)
+            return null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float GetDistanceSq(float x1, float y1, float x2, float y2)
+        {
+            float dx = x1 - x2;
+            float dy = y1 - y2;
+            return dx * dx + dy * dy;
+        }
+
+        /// <summary>
+        /// Returns a scaling factor based on target size. Smaller targets (further away) get higher factors
+        /// to make thresholds more forgiving and filtering more aggressive.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float GetSizeFactor(float targetArea)
+        {
+            // sizeFactor: 1.0 for large/close targets, up to 3.0 for small/distant targets
+            // This makes distant targets more "sticky" to compensate for detection jitter
+            float ratio = REFERENCE_TARGET_SIZE / Math.Max(targetArea, 100f);
+            return Math.Clamp(ratio, 1.0f, 3.0f);
+        }
+
+        private Prediction? HandleNoDetections()
+        {
+            if (_currentTarget != null && ++_consecutiveFramesWithoutTarget <= MAX_FRAMES_WITHOUT_TARGET)
+            {
+                // Decay lock score during grace period
+                _targetLockScore *= LOCK_SCORE_DECAY;
+
+                // Return predicted position instead of stale position
+                var predicted = new Prediction
+                {
+                    ScreenCenterX = _currentTarget.ScreenCenterX + _lastTargetVelocityX * _consecutiveFramesWithoutTarget,
+                    ScreenCenterY = _currentTarget.ScreenCenterY + _lastTargetVelocityY * _consecutiveFramesWithoutTarget,
+                    Rectangle = _currentTarget.Rectangle,
+                    Confidence = _currentTarget.Confidence * (1f - _consecutiveFramesWithoutTarget * 0.2f),
+                    ClassId = _currentTarget.ClassId,
+                    ClassName = _currentTarget.ClassName,
+                    CenterXTranslated = _currentTarget.CenterXTranslated,
+                    CenterYTranslated = _currentTarget.CenterYTranslated
+                };
+                return predicted;
+            }
+
+            ResetStickyAimState();
+            return null;
+        }
+
+        private Prediction AcquireNewTarget(Prediction target)
+        {
+            _lastTargetVelocityX = 0f;
+            _lastTargetVelocityY = 0f;
+            _targetLockScore = LOCK_SCORE_GAIN; // Start with some lock score
+            _framesWithoutMatch = 0;
+            _currentTarget = target;
+            return target;
+        }
+
+        private void UpdateVelocity(Prediction newTarget, float sizeFactor)
+        {
+            if (_currentTarget != null)
+            {
+                // EMA smoothing on velocity to reduce noise
+                // Use heavier smoothing for smaller/distant targets (more weight on old velocity)
+                // sizeFactor 1.0 -> 0.7/0.3, sizeFactor 3.0 -> 0.9/0.1
+                float smoothing = Math.Clamp(0.6f + (sizeFactor * 0.1f), 0.7f, 0.9f);
+                float newWeight = 1f - smoothing;
+
+                float newVelX = newTarget.ScreenCenterX - _currentTarget.ScreenCenterX;
+                float newVelY = newTarget.ScreenCenterY - _currentTarget.ScreenCenterY;
+                _lastTargetVelocityX = _lastTargetVelocityX * smoothing + newVelX * newWeight;
+                _lastTargetVelocityY = _lastTargetVelocityY * smoothing + newVelY * newWeight;
+            }
+        }
+
+        private void ResetStickyAimState()
+        {
+            _currentTarget = null;
+            _consecutiveFramesWithoutTarget = 0;
+            _framesWithoutMatch = 0;
+            _lastTargetVelocityX = 0f;
+            _lastTargetVelocityY = 0f;
+            _targetLockScore = 0f;
         }
 
         private void UpdateDetectionBox(Prediction target, Rectangle detectionBox)
