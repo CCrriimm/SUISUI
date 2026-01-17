@@ -515,9 +515,10 @@ namespace AILogic
                     }
                 }
 
-
-
-                return screenCaptureBitmap;
+                // Clone the bitmap to avoid race conditions with Sticky Aim / SaveFrame
+                // The source bitmap is reused, so returning it directly can cause crashes
+                // if the caller is still using it when the next frame capture starts
+                return (Bitmap)screenCaptureBitmap.Clone();
             }
             catch (Exception ex)
             {

@@ -127,7 +127,8 @@ namespace Aimmy2
         private void LoadInitialMenu()
         {
             LoadMenu("AimMenu");
-            UpdateSliderVisibility(uiManager);
+            // Don't call UpdateSliderVisibility here - it would override collapsed menu states
+            // Visibility is handled by the toggle click actions when user interacts with toggles
             _currentMenu = "AimMenu";
         }
 
@@ -215,7 +216,8 @@ namespace Aimmy2
                     (Dictionary.bindingSettings, "bin\\binding.cfg"),
                     (Dictionary.colorState, "bin\\colors.cfg"),
                     (Dictionary.filelocationState, "bin\\filelocations.cfg"),
-                    (Dictionary.dropdownState, "bin\\dropdown.cfg")
+                    (Dictionary.dropdownState, "bin\\dropdown.cfg"),
+                    (Dictionary.toggleState, "bin\\toggles.cfg")
                 };
 
                 foreach (var (dict, path) in configs)
@@ -442,6 +444,7 @@ namespace Aimmy2
             SaveDictionary.WriteJSON(Dictionary.dropdownState, "bin\\dropdown.cfg");
             SaveDictionary.WriteJSON(Dictionary.colorState, "bin\\colors.cfg");
             SaveDictionary.WriteJSON(Dictionary.filelocationState, "bin\\filelocations.cfg");
+            SaveDictionary.WriteJSON(Dictionary.toggleState, "bin\\toggles.cfg");
         }
 
         #endregion
@@ -909,6 +912,11 @@ namespace Aimmy2
                     }
                 }
             }
+
+            // Update slider visibility based on loaded states
+            UpdatePredictionSliderVisibility();
+            UpdateAimAssistSliderVisibility();
+            UpdateAimConfigSliderVisibility();
         }
 
         private void LoadConfig(string path = "bin\\configs\\Default.cfg", bool loading_from_configlist = false)
@@ -1033,8 +1041,6 @@ namespace Aimmy2
 
         public void UpdatePredictionSliderVisibility()
         {
-            string selectedMethod = Dictionary.dropdownState["Prediction Method"];
-
             // Hide all prediction sliders first
             if (uiManager.S_KalmanLeadTime != null)
                 uiManager.S_KalmanLeadTime.Visibility = Visibility.Collapsed;
@@ -1043,7 +1049,15 @@ namespace Aimmy2
             if (uiManager.S_ShalloeLeadMultiplier != null)
                 uiManager.S_ShalloeLeadMultiplier.Visibility = Visibility.Collapsed;
 
-            // Show the relevant slider based on selected method
+            // Don't show sliders if Predictions section is collapsed
+            if (Dictionary.minimizeState.TryGetValue("Predictions", out var collapsed) && collapsed == true)
+                return;
+
+            // Get selected method from actual dropdown selection
+            var selectedItem = uiManager.D_PredictionMethod?.DropdownBox?.SelectedItem as ComboBoxItem;
+            string selectedMethod = selectedItem?.Content?.ToString() ?? "";
+
+            // Show only the relevant slider based on selected method
             switch (selectedMethod)
             {
                 case "Kalman Filter":
@@ -1059,6 +1073,51 @@ namespace Aimmy2
                         uiManager.S_WiseTheFoxLeadTime.Visibility = Visibility.Visible;
                     break;
             }
+        }
+
+        public void UpdateAimAssistSliderVisibility()
+        {
+            // Don't show sliders if Aim Assist section is collapsed
+            if (Dictionary.minimizeState.TryGetValue("Aim Assist", out var collapsed) && collapsed == true)
+            {
+                if (uiManager.S_StickyAimThreshold != null)
+                    uiManager.S_StickyAimThreshold.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Show Sticky Aim Threshold only if Sticky Aim is enabled
+            if (uiManager.S_StickyAimThreshold != null)
+            {
+                uiManager.S_StickyAimThreshold.Visibility = Dictionary.toggleState["Sticky Aim"]
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        public void UpdateAimConfigSliderVisibility()
+        {
+            // Don't show sliders if Aim Config section is collapsed
+            if (Dictionary.minimizeState.TryGetValue("Aim Config", out var collapsed) && collapsed == true)
+            {
+                if (uiManager.S_YOffset != null) uiManager.S_YOffset.Visibility = Visibility.Collapsed;
+                if (uiManager.S_YOffsetPercent != null) uiManager.S_YOffsetPercent.Visibility = Visibility.Collapsed;
+                if (uiManager.S_XOffset != null) uiManager.S_XOffset.Visibility = Visibility.Collapsed;
+                if (uiManager.S_XOffsetPercent != null) uiManager.S_XOffsetPercent.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Y Axis: Show pixel offset when toggle is OFF, percentage offset when toggle is ON
+            bool yPercentEnabled = Dictionary.toggleState["Y Axis Percentage Adjustment"];
+            if (uiManager.S_YOffset != null)
+                uiManager.S_YOffset.Visibility = yPercentEnabled ? Visibility.Collapsed : Visibility.Visible;
+            if (uiManager.S_YOffsetPercent != null)
+                uiManager.S_YOffsetPercent.Visibility = yPercentEnabled ? Visibility.Visible : Visibility.Collapsed;
+
+            // X Axis: Show pixel offset when toggle is OFF, percentage offset when toggle is ON
+            bool xPercentEnabled = Dictionary.toggleState["X Axis Percentage Adjustment"];
+            if (uiManager.S_XOffset != null)
+                uiManager.S_XOffset.Visibility = xPercentEnabled ? Visibility.Collapsed : Visibility.Visible;
+            if (uiManager.S_XOffsetPercent != null)
+                uiManager.S_XOffsetPercent.Visibility = xPercentEnabled ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void ApplySliderValues((string key, ASlider? slider, double defaultValue)[] configs, Dictionary<string, dynamic> source)

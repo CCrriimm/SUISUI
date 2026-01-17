@@ -38,6 +38,9 @@ namespace Aimmy2.AILogic
         public int IMAGE_SIZE => _currentImageSize;
         private int NUM_DETECTIONS { get; set; } = 8400; // Will be set dynamically for dynamic models
         private bool IsDynamicModel { get; set; } = false;
+
+        // Public static property to check if current loaded model is dynamic
+        public static bool CurrentModelIsDynamic { get; private set; } = false;
         private int ModelFixedSize { get; set; } = 640; // Store the fixed size for non-dynamic models
         private int NUM_CLASSES { get; set; } = 1;
         private Dictionary<int, string> _modelClasses = new Dictionary<int, string>
@@ -47,6 +50,7 @@ namespace Aimmy2.AILogic
         public Dictionary<int, string> ModelClasses => _modelClasses; // apparently this is better than making _modelClasses public
         public static event Action<Dictionary<int, string>>? ClassesUpdated;
         public static event Action<int>? ImageSizeUpdated;
+        public static event Action<bool>? DynamicModelStatusChanged;
 
         private const int SAVE_FRAME_COOLDOWN_MS = 500;
 
@@ -331,6 +335,7 @@ namespace Aimmy2.AILogic
                 }
 
                 IsDynamicModel = isDynamic;
+                CurrentModelIsDynamic = isDynamic;
 
                 if (IsDynamicModel)
                 {
@@ -399,6 +404,9 @@ namespace Aimmy2.AILogic
 
                     Log(LogLevel.Info, $"Loaded fixed-size model: {fixedInputSize}x{fixedInputSize}", true, 2000);
                 }
+
+                // Notify UI about dynamic model status
+                DynamicModelStatusChanged?.Invoke(IsDynamicModel);
 
                 return true;
             }
@@ -906,39 +914,38 @@ namespace Aimmy2.AILogic
 
             if (frame == null) return null;
 
-            float[] inputArray;
-            using (Benchmark("BitmapToFloatArray"))
-            {
-                if (_reusableInputArray == null || _reusableInputArray.Length != 3 * IMAGE_SIZE * IMAGE_SIZE)
-                {
-                    _reusableInputArray = new float[3 * IMAGE_SIZE * IMAGE_SIZE];
-                }
-                inputArray = _reusableInputArray;
-
-                // Fill the reusable array
-                BitmapToFloatArrayInPlace(frame, inputArray, IMAGE_SIZE);
-            }
-
-            // Reuse tensor and inputs - recreate if size changed
-            /// this needs to be revised !!!!! - taylor
-            if (_reusableTensor == null || _reusableTensor.Dimensions[2] != IMAGE_SIZE)
-            {
-                _reusableTensor = new DenseTensor<float>(inputArray, new int[] { 1, 3, IMAGE_SIZE, IMAGE_SIZE });
-                _reusableInputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor("images", _reusableTensor) };
-            }
-            else
-            {
-                // Directly copy into existing DenseTensor buffer
-                inputArray.AsSpan().CopyTo(_reusableTensor.Buffer.Span); 
-            }
-
-            if (_onnxModel == null) return null;
-
             IDisposableReadOnlyCollection<DisposableNamedOnnxValue>? results = null;
             Tensor<float>? outputTensor = null;
 
             try
             {
+                float[] inputArray;
+                using (Benchmark("BitmapToFloatArray"))
+                {
+                    if (_reusableInputArray == null || _reusableInputArray.Length != 3 * IMAGE_SIZE * IMAGE_SIZE)
+                    {
+                        _reusableInputArray = new float[3 * IMAGE_SIZE * IMAGE_SIZE];
+                    }
+                    inputArray = _reusableInputArray;
+
+                    // Fill the reusable array
+                    BitmapToFloatArrayInPlace(frame, inputArray, IMAGE_SIZE);
+                }
+
+                // Reuse tensor and inputs - recreate if size changed
+                /// this needs to be revised !!!!! - taylor
+                if (_reusableTensor == null || _reusableTensor.Dimensions[2] != IMAGE_SIZE)
+                {
+                    _reusableTensor = new DenseTensor<float>(inputArray, new int[] { 1, 3, IMAGE_SIZE, IMAGE_SIZE });
+                    _reusableInputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor("images", _reusableTensor) };
+                }
+                else
+                {
+                    // Directly copy into existing DenseTensor buffer
+                    inputArray.AsSpan().CopyTo(_reusableTensor.Buffer.Span);
+                }
+
+                if (_onnxModel == null) return null;
                 using (Benchmark("ModelInference"))
                 {
                     results = _onnxModel.Run(_reusableInputs, _outputNames, _modeloptions);
@@ -1000,11 +1007,12 @@ namespace Aimmy2.AILogic
                     return finalTarget;
                 }
 
-                frame.Dispose();
                 return null;
             }
             finally
             {
+                // Always dispose the cloned frame to prevent memory leaks
+                frame.Dispose();
                 results?.Dispose();
             }
         }
@@ -1295,25 +1303,42 @@ namespace Aimmy2.AILogic
             // Cooldown check
             if ((DateTime.Now - lastSavedTime).TotalMilliseconds < SAVE_FRAME_COOLDOWN_MS) return;
 
-            lastSavedTime = DateTime.Now;
-            string uuid = Guid.NewGuid().ToString();
-
-            // Clone the bitmap to avoid threading issues
-            string imagePath = Path.Combine("bin", "images", $"{uuid}.jpg");
-
-            // Save synchronously to avoid "Object is currently in use elsewhere" error
-            frame.Save(imagePath, ImageFormat.Jpeg);
-
-            if (Dictionary.toggleState["Auto Label Data"] && DoLabel != null)
+            try
             {
-                var labelPath = Path.Combine("bin", "labels", $"{uuid}.txt");
+                // Validate bitmap is still usable
+                if (frame == null) return;
 
-                float x = (DoLabel!.Rectangle.X + DoLabel.Rectangle.Width / 2) / frame.Width;
-                float y = (DoLabel!.Rectangle.Y + DoLabel.Rectangle.Height / 2) / frame.Height;
-                float width = DoLabel.Rectangle.Width / frame.Width;
-                float height = DoLabel.Rectangle.Height / frame.Height;
+                // Accessing Width/Height will throw if bitmap is disposed
+                int width = frame.Width;
+                int height = frame.Height;
+                if (width <= 0 || height <= 0) return;
 
-                File.WriteAllText(labelPath, $"{DoLabel.ClassId} {x} {y} {width} {height}");
+                lastSavedTime = DateTime.Now;
+                string uuid = Guid.NewGuid().ToString();
+                string imagePath = Path.Combine("bin", "images", $"{uuid}.jpg");
+
+                // Save synchronously to avoid "Object is currently in use elsewhere" error
+                frame.Save(imagePath, ImageFormat.Jpeg);
+
+                if (Dictionary.toggleState["Auto Label Data"] && DoLabel != null)
+                {
+                    var labelPath = Path.Combine("bin", "labels", $"{uuid}.txt");
+
+                    float x = (DoLabel!.Rectangle.X + DoLabel.Rectangle.Width / 2) / width;
+                    float y = (DoLabel!.Rectangle.Y + DoLabel.Rectangle.Height / 2) / height;
+                    float labelWidth = DoLabel.Rectangle.Width / width;
+                    float labelHeight = DoLabel.Rectangle.Height / height;
+
+                    File.WriteAllText(labelPath, $"{DoLabel.ClassId} {x} {y} {labelWidth} {labelHeight}");
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Bitmap was disposed or invalid - silently ignore
+            }
+            catch (Exception ex)
+            {
+                Log(LogLevel.Error, $"SaveFrame failed: {ex.Message}");
             }
         }
 

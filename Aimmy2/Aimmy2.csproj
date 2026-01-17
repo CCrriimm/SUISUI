@@ -106,9 +106,6 @@
 	  <Compile Update="Other\StreamGuardManager.cs">
 	    <Generator>MSBuild:Compile</Generator>
 	  </Compile>
-	  <Compile Update="UILibrary\ACredit.xaml.cs">
-	    <SubType>Code</SubType>
-	  </Compile>
 	  <Compile Update="UILibrary\AFileLocator.xaml.cs">
 	    <SubType>Code</SubType>
 	  </Compile>

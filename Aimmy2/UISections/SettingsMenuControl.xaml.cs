@@ -23,7 +23,6 @@ namespace Aimmy2.Controls
         {
             { "Model Settings", false },
             { "Settings Menu", false },
-            { "X/Y Percentage Adjustment", false },
             { "Theme Settings", false },
             { "Screen Settings", false }
         };
@@ -31,7 +30,6 @@ namespace Aimmy2.Controls
         // Public properties for MainWindow access
         public StackPanel ModelSettingsPanel => ModelSettings;
         public StackPanel SettingsConfigPanel => SettingsConfig;
-        public StackPanel XYPercentageEnablerMenuPanel => XYPercentageEnablerMenu;
         public StackPanel ThemeMenuPanel => ThemeMenu;
         public StackPanel DisplaySelectMenuPanel => DisplaySelectMenu;
         public ScrollViewer SettingsMenuScrollViewer => SettingsMenu;
@@ -53,7 +51,6 @@ namespace Aimmy2.Controls
 
             LoadModelSettings();
             LoadSettingsConfig();
-            LoadXYPercentageMenu();
             LoadThemeMenu();
             LoadDisplaySelectMenu();
 
@@ -65,6 +62,12 @@ namespace Aimmy2.Controls
 
             // Subscribe to AI class updates for Target Class dropdown
             AIManager.ClassesUpdated += OnClassesChanged;
+
+            // Subscribe to dynamic model status changes
+            AIManager.DynamicModelStatusChanged += OnDynamicModelStatusChanged;
+
+            // Set visibility based on current model status (handles case where model loaded before panel opened)
+            UpdateDynamicModelDropdownsVisibility(AIManager.CurrentModelIsDynamic);
         }
 
         #region Minimize State Management
@@ -92,7 +95,6 @@ namespace Aimmy2.Controls
         {
             ApplyPanelState("Model Settings", ModelSettingsPanel);
             ApplyPanelState("Settings Menu", SettingsConfigPanel);
-            ApplyPanelState("X/Y Percentage Adjustment", XYPercentageEnablerMenuPanel);
             ApplyPanelState("Theme Settings", ThemeMenuPanel);
             ApplyPanelState("Screen Settings", DisplaySelectMenuPanel);
         }
@@ -281,25 +283,6 @@ namespace Aimmy2.Controls
                 .AddSeparator();
         }
 
-        private void LoadXYPercentageMenu()
-        {
-            var uiManager = _mainWindow!.uiManager;
-            var builder = new SectionBuilder(this, XYPercentageEnablerMenu);
-
-            builder
-                .AddTitle("X/Y Percentage Adjustment", true, t =>
-                {
-                    uiManager.AT_XYPercentageAdjustmentEnabler = t;
-                    t.Minimize.Click += (s, e) =>
-                        TogglePanel("X/Y Percentage Adjustment", XYPercentageEnablerMenuPanel);
-                })
-                .AddToggle("X Axis Percentage Adjustment", t => uiManager.T_XAxisPercentageAdjustment = t,
-                    tooltip: "Enable the X Offset (%) slider in Aim Config to adjust aim horizontally by percentage.")
-                .AddToggle("Y Axis Percentage Adjustment", t => uiManager.T_YAxisPercentageAdjustment = t,
-                    tooltip: "Enable the Y Offset (%) slider in Aim Config to adjust aim vertically by percentage.")
-                .AddSeparator();
-        }
-
         private void LoadDisplaySelectMenu()
         {
             var uiManager = _mainWindow!.uiManager;
@@ -314,6 +297,7 @@ namespace Aimmy2.Controls
                 })
                 .AddDropdown("Screen Capture Method", d =>
                 {
+                    d.DropdownBox.SelectedIndex = -1;  // Prevent auto-selection that overwrites saved state
                     uiManager.D_ScreenCaptureMethod = d;
                     _mainWindow.AddDropdownItem(d, "DirectX");
                     _mainWindow.AddDropdownItem(d, "GDI+");
@@ -430,6 +414,26 @@ namespace Aimmy2.Controls
                     UpdateTargetClassDropdown(_mainWindow.uiManager.D_TargetClass, classes);
                 }
             });
+        }
+
+        private void OnDynamicModelStatusChanged(bool isDynamic)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                UpdateDynamicModelDropdownsVisibility(isDynamic);
+            });
+        }
+
+        private void UpdateDynamicModelDropdownsVisibility(bool isDynamic)
+        {
+            // Only Image Size depends on dynamic model - it's hidden for static models
+            // Target Class is always visible since both static and dynamic models can have multiple classes
+            var imageSizeVisibility = isDynamic ? Visibility.Visible : Visibility.Collapsed;
+
+            if (_mainWindow?.uiManager.D_ImageSize != null)
+            {
+                _mainWindow.uiManager.D_ImageSize.Visibility = imageSizeVisibility;
+            }
         }
 
         private void UpdateTargetClassDropdown(ADropdown dropdown, Dictionary<int, string>? _classes = null)

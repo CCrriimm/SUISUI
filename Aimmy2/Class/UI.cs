@@ -104,8 +104,7 @@ namespace Class
         public AToggle? T_StreamGuard { get; set; }
         //--
 
-        // X/Y Percentage Adjustment Enabler
-        public ATitle? AT_XYPercentageAdjustmentEnabler { get; set; }
+        // X/Y Percentage Adjustment (in Aim Config)
         public AToggle? T_XAxisPercentageAdjustment { get; set; }
         public AToggle? T_YAxisPercentageAdjustment { get; set; }
 

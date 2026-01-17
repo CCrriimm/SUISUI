@@ -152,7 +152,11 @@ namespace Aimmy2.Controls
                 .AddTitle("Aim Assist", true, t =>
                 {
                     uiManager.AT_Aim = t;
-                    t.Minimize.Click += (s, e) => TogglePanel("Aim Assist", AimAssistPanel);
+                    t.Minimize.Click += (s, e) =>
+                    {
+                        TogglePanel("Aim Assist", AimAssistPanel);
+                        _mainWindow?.UpdateAimAssistSliderVisibility();
+                    };
                 })
                 .AddToggle("Aim Assist", t =>
                 {
@@ -192,7 +196,9 @@ namespace Aimmy2.Controls
                 .AddSlider("Sticky Aim Threshold", "Pixels", 1, 1, 0, 100, s =>
                 {
                     uiManager.S_StickyAimThreshold = s;
-                    s.Visibility = System.Windows.Visibility.Collapsed; // Hidden until Sticky Aim is enabled
+                    // Set initial visibility based on toggle state
+                    s.Visibility = Dictionary.toggleState["Sticky Aim"]
+                        ? Visibility.Visible : Visibility.Collapsed;
                 }, tooltip: "How far a target must move before switching to a new one. Higher = stays locked longer.")
                 .AddKeyChanger("Aim Keybind", k => uiManager.C_Keybind = k,
                     tooltip: "The key you hold to activate aim assist.")
@@ -209,7 +215,11 @@ namespace Aimmy2.Controls
                 .AddTitle("Aim Config", true, t =>
                 {
                     uiManager.AT_AimConfig = t;
-                    t.Minimize.Click += (s, e) => TogglePanel("Aim Config", AimConfigPanel);
+                    t.Minimize.Click += (s, e) =>
+                    {
+                        TogglePanel("Aim Config", AimConfigPanel);
+                        _mainWindow?.UpdateAimConfigSliderVisibility();
+                    };
                 })
                 .AddDropdown("Mouse Movement Method", d =>
                 {
@@ -301,14 +311,38 @@ namespace Aimmy2.Controls
                 }, tooltip: "How fast the aim moves. Lower = faster and snappier, higher = slower and smoother.")
                 .AddSlider("Mouse Jitter", "Jitter", 1, 1, 0, 15, s => uiManager.S_MouseJitter = s,
                     tooltip: "Adds random small movements to make aim look more human-like.")
-                .AddSlider("Y Offset (Up/Down)", "Offset", 1, 1, -150, 150, s => uiManager.S_YOffset = s,
-                    tooltip: "Move aim point up (negative) or down (positive) in pixels.")
-                .AddSlider("Y Offset (%)", "Percent", 1, 1, 0, 100, s => uiManager.S_YOffsetPercent = s,
-                    tooltip: "Move aim point up or down as a percentage of the target box height.")
-                .AddSlider("X Offset (Left/Right)", "Offset", 1, 1, -150, 150, s => uiManager.S_XOffset = s,
-                    tooltip: "Move aim point left (negative) or right (positive) in pixels.")
-                .AddSlider("X Offset (%)", "Percent", 1, 1, 0, 100, s => uiManager.S_XOffsetPercent = s,
-                    tooltip: "Move aim point left or right as a percentage of the target box width.");
+                .AddToggle("Y Axis Percentage Adjustment", t => uiManager.T_YAxisPercentageAdjustment = t,
+                    tooltip: "Enable the Y Offset (%) slider to adjust aim vertically by percentage.")
+                .AddToggle("X Axis Percentage Adjustment", t => uiManager.T_XAxisPercentageAdjustment = t,
+                    tooltip: "Enable the X Offset (%) slider to adjust aim horizontally by percentage.")
+                .AddSlider("Y Offset (Up/Down)", "Offset", 1, 1, -150, 150, s =>
+                {
+                    uiManager.S_YOffset = s;
+                    // Set initial visibility based on toggle state
+                    s.Visibility = Dictionary.toggleState["Y Axis Percentage Adjustment"]
+                        ? Visibility.Collapsed : Visibility.Visible;
+                }, tooltip: "Move aim point up (negative) or down (positive) in pixels.")
+                .AddSlider("Y Offset (%)", "Percent", 1, 1, 0, 100, s =>
+                {
+                    uiManager.S_YOffsetPercent = s;
+                    // Set initial visibility based on toggle state
+                    s.Visibility = Dictionary.toggleState["Y Axis Percentage Adjustment"]
+                        ? Visibility.Visible : Visibility.Collapsed;
+                }, tooltip: "Move aim point up or down as a percentage of the target box height.")
+                .AddSlider("X Offset (Left/Right)", "Offset", 1, 1, -150, 150, s =>
+                {
+                    uiManager.S_XOffset = s;
+                    // Set initial visibility based on toggle state
+                    s.Visibility = Dictionary.toggleState["X Axis Percentage Adjustment"]
+                        ? Visibility.Collapsed : Visibility.Visible;
+                }, tooltip: "Move aim point left (negative) or right (positive) in pixels.")
+                .AddSlider("X Offset (%)", "Percent", 1, 1, 0, 100, s =>
+                {
+                    uiManager.S_XOffsetPercent = s;
+                    // Set initial visibility based on toggle state
+                    s.Visibility = Dictionary.toggleState["X Axis Percentage Adjustment"]
+                        ? Visibility.Visible : Visibility.Collapsed;
+                }, tooltip: "Move aim point left or right as a percentage of the target box width.");
         }
 
         private void LoadPredictions()
@@ -320,7 +354,11 @@ namespace Aimmy2.Controls
                 .AddTitle("Predictions", true, t =>
                 {
                     uiManager.AT_Predictions = t;
-                    t.Minimize.Click += (s, e) => TogglePanel("Predictions", PredictionsPanel);
+                    t.Minimize.Click += (s, e) =>
+                    {
+                        TogglePanel("Predictions", PredictionsPanel);
+                        _mainWindow?.UpdatePredictionSliderVisibility();
+                    };
                 })
                 .AddToggle("Predictions", t => uiManager.T_Predictions = t,
                     tooltip: "Predict where a moving target will be. Helps track fast-moving targets.")
@@ -338,17 +376,20 @@ namespace Aimmy2.Controls
                 .AddSlider("Kalman Lead Time", "Seconds", 0.01, 0.01, 0.02, 0.30, s =>
                 {
                     uiManager.S_KalmanLeadTime = s;
-                    s.Visibility = System.Windows.Visibility.Collapsed; // Hidden by default
+                    // Start collapsed - visibility will be set by LoadDropdownStates
+                    s.Visibility = Visibility.Collapsed;
                 }, tooltip: "How far ahead to predict target position. Higher = more prediction, may overshoot.")
                 .AddSlider("WiseTheFox Lead Time", "Seconds", 0.01, 0.01, 0.02, 0.30, s =>
                 {
                     uiManager.S_WiseTheFoxLeadTime = s;
-                    s.Visibility = System.Windows.Visibility.Collapsed;
+                    // Start collapsed - visibility will be set by LoadDropdownStates
+                    s.Visibility = Visibility.Collapsed;
                 }, tooltip: "How far ahead to predict target position. Higher = more prediction, may overshoot.")
                 .AddSlider("Shalloe Lead Multiplier", "Frames", 0.5, 0.5, 1, 10, s =>
                 {
                     uiManager.S_ShalloeLeadMultiplier = s;
-                    s.Visibility = System.Windows.Visibility.Collapsed;
+                    // Start collapsed - visibility will be set by LoadDropdownStates
+                    s.Visibility = Visibility.Collapsed;
                 }, tooltip: "How many frames ahead to predict. Higher = more prediction, may overshoot.")
                 .AddToggle("EMA Smoothening", t => uiManager.T_EMASmoothing = t,
                     tooltip: "Smooth out aim movements to reduce jitter and make tracking steadier.")
