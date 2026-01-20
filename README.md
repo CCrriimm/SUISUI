@@ -96,7 +96,7 @@ Beyond the core functionality, Aimmy also adds some amazing additional features 
 
 Aimmy comes pre-bundled with a well trained AI model with thousands of images. 
 
-Besides those that model, Aimmy provides dozens of other community made models through the store and our Discord server, with more models being developed every day by other Aimmy users. These models vary from game to image count, making Aimmy incredibly versatile and universal for thousands of games on the market right now.
+Besides that model, Aimmy provides dozens of other community made models through the store and our Discord server, with more models being developed every day by other Aimmy users. These models vary from game to image count, making Aimmy incredibly versatile and universal for thousands of games on the market right now.
 
 ## How the hell is Aimmy free?
 As an AI based Aim Aligner, Aimmy does not require any sort of upkeep because it does not read any specific game data to perform it's actions. If Aimmy team stops maintaining Aimmy, even if no one pitches in to fork and maintain the project, Aimmy would still work.
