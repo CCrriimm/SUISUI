@@ -94,11 +94,9 @@ Aimmy is written in C# using .NET 8 and WPF utilizing pre-existing libraries lik
 
 Beyond the core functionality, Aimmy also adds some amazing additional features like Detection ESP to help you tune your gaming experience however you like it.
 
-Aimmy comes pre-bundled with 2 well trained AI models with thousands of images each. 
-1. Phantom Forces
-2. Universal Model
+Aimmy comes pre-bundled with a well trained AI model with thousands of images. 
 
-Besides those 2 models, Aimmy provides dozens of other community made models through the store, with more models being developed every day by other Aimmy users. These models vary from game to image count, making Aimmy incredibly versatile and universal for thousands of games on the market right now.
+Besides those that model, Aimmy provides dozens of other community made models through the store and our Discord server, with more models being developed every day by other Aimmy users. These models vary from game to image count, making Aimmy incredibly versatile and universal for thousands of games on the market right now.
 
 ## How the hell is Aimmy free?
 As an AI based Aim Aligner, Aimmy does not require any sort of upkeep because it does not read any specific game data to perform it's actions. If Aimmy team stops maintaining Aimmy, even if no one pitches in to fork and maintain the project, Aimmy would still work.
